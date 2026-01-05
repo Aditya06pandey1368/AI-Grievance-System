@@ -1,32 +1,38 @@
+import axios from 'axios';
 import Complaint from '../models/Complaint.model.js';
 import Department from '../models/Department.model.js';
 
-// --- MOCK AI FUNCTION (We will replace this with Python later) ---
-const simulateAIAnalysis = (text) => {
-  const lowerText = text.toLowerCase();
-  
-  // Simple keyword matching for testing
-  if (lowerText.includes('road') || lowerText.includes('pothole')) 
-    return { category: 'Road', priorityScore: 85, priorityLevel: 'High' };
-  
-  if (lowerText.includes('water') || lowerText.includes('leak')) 
-    return { category: 'Water', priorityScore: 90, priorityLevel: 'Critical' };
+// --- REAL AI CONNECT FUNCTION ---
+const analyzeComplaint = async (text) => {
+  try {
+    // 1. Call the Python Microservice
+    const response = await axios.post('http://localhost:8000/predict', {
+      text: text
+    });
     
-  return { category: 'Other', priorityScore: 50, priorityLevel: 'Medium' };
+    // 2. Return the AI's answer
+    return {
+      category: response.data.category,
+      priorityScore: response.data.priority_score,
+      priorityLevel: response.data.priority_level
+    };
+  } catch (error) {
+    console.error("❌ AI Service Error:", error.message);
+    // Fallback if Python server is down
+    return { category: 'Other', priorityScore: 50, priorityLevel: 'Medium' };
+  }
 };
 
 // --- MAIN SERVICE FUNCTION ---
 export const createNewComplaint = async (title, description, userId, location) => {
   
-  // 1. Call AI (Simulated for now)
-  const aiResult = simulateAIAnalysis(title + " " + description);
+  // 1. Call REAL AI
+  const aiResult = await analyzeComplaint(title + " " + description);
   
-  // 2. Find the correct Department based on AI Category
-  // (e.g., Find the department where name matches "Road")
-  // Note: This requires you to have created departments in DB previously
+  // 2. Find Department (e.g., Road Dept)
   let department = await Department.findOne({ name: { $regex: aiResult.category, $options: 'i' } });
   
-  // 3. Create the Complaint
+  // 3. Create Complaint
   const newComplaint = await Complaint.create({
     title,
     description,
@@ -35,8 +41,8 @@ export const createNewComplaint = async (title, description, userId, location) =
     category: aiResult.category,
     priorityScore: aiResult.priorityScore,
     priorityLevel: aiResult.priorityLevel,
-    department: department ? department._id : null, // Assign Dept if found
-    status: 'classified' // Initial status
+    department: department ? department._id : null,
+    status: 'classified'
   });
 
   return newComplaint;
