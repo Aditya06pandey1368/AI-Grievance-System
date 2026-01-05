@@ -1,0 +1,35 @@
+import * as complaintService from '../services/complaint.service.js';
+
+// @desc    Submit a new grievance
+// @route   POST /api/complaints
+// @access  Private (Citizen)
+export const submitComplaint = async (req, res) => {
+  try {
+    const { title, description, location } = req.body;
+    const userId = req.user._id; // Comes from 'protect' middleware
+
+    // Delegate to Service
+    const complaint = await complaintService.createNewComplaint(
+      title, 
+      description, 
+      userId, 
+      location
+    );
+
+    res.status(201).json({ success: true, data: complaint });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Get logged-in user's history
+// @route   GET /api/complaints/my-history
+// @access  Private
+export const getMyHistory = async (req, res) => {
+  try {
+    const complaints = await complaintService.getUserComplaints(req.user._id);
+    res.status(200).json({ success: true, count: complaints.length, data: complaints });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

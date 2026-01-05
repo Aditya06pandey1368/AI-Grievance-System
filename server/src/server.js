@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import connectDB from './config/db.js';
 import authRoutes from './routes/auth.routes.js';
 import departmentRoutes from './routes/department.routes.js';
+import complaintRoutes from './routes/complaint.routes.js';
 
 // 1. Load Environment Variables
 dotenv.config();
@@ -19,6 +20,7 @@ const app = express();
 app.use(helmet()); // Adds security headers
 app.use(cors());   // Allows frontend access
 app.use(express.json()); // Parses JSON body
+app.use('/api/complaints', complaintRoutes);
 
 // 5. Test Route
 app.get('/', (req, res) => {
