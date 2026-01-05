@@ -4,6 +4,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import connectDB from './config/db.js';
 import authRoutes from './routes/auth.routes.js';
+import departmentRoutes from './routes/department.routes.js';
 
 // 1. Load Environment Variables
 dotenv.config();
@@ -24,6 +25,7 @@ app.get('/', (req, res) => {
   res.status(200).json({ message: 'API is running in production mode' });
 });
 app.use('/api/auth', authRoutes);
+app.use('/api/departments', departmentRoutes);
 
 // 6. Start Server
 const PORT = process.env.PORT || 5000;
