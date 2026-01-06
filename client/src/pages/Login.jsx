@@ -6,20 +6,30 @@ import Input from "../components/ui/Input";
 import Button from "../components/ui/Button";
 import Card from "../components/ui/Card";
 import Navbar from "../components/layout/Navbar";
+import { toast } from "react-hot-toast"; // Import Toast
+import { useAuth } from "../context/AuthContext";
 
 const Login = () => {
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [isLoading, setIsLoading] = useState(false);
+  const { login } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    // Simulate API call for now (We will connect real API in next step)
-    setTimeout(() => {
-      setIsLoading(false);
-      // alert("Login Clicked!"); 
-    }, 2000);
+
+    // Call the REAL backend
+    const result = await login(formData.email, formData.password);
+
+    if (result.success) {
+      toast.success("Welcome back, Citizen!");
+      navigate("/dashboard"); // Redirect to Dashboard
+    } else {
+      toast.error(result.message); // Show Error Popup
+    }
+
+    setIsLoading(false);
   };
 
   return (
