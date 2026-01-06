@@ -1,24 +1,28 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+
+// --- IMPORTS ---
+import Home from "./pages/Home";
 import Login from "./pages/Login";
+import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import SubmitComplaint from "./pages/SubmitComplaint";
-
-// Placeholder for Home
-const Home = () => (
-  <div className="min-h-screen bg-slate-50 dark:bg-dark-bg pt-24 text-center">
-    <h1 className="text-3xl dark:text-white">Home Page Placeholder</h1>
-    <a href="/login" className="text-primary-500 underline">Go to Login</a>
-  </div>
-);
+import AdminDashboard from "./pages/AdminDashboard";
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Public Routes */}
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+
+        {/* Private Routes */}
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/submit-complaint" element={<SubmitComplaint />} />
+        
+        {/* Admin Route */}
+        <Route path="/admin-dashboard" element={<AdminDashboard />} />
       </Routes>
     </BrowserRouter>
   );

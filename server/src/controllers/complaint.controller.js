@@ -33,3 +33,26 @@ export const getMyHistory = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+// @desc    Get ALL complaints (Admin only)
+// @route   GET /api/complaints/admin/all
+export const getAllComplaints = async (req, res) => {
+  try {
+    const complaints = await complaintService.getAllComplaints();
+    res.json({ success: true, count: complaints.length, data: complaints });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Update Status (e.g., "In Progress" -> "Resolved")
+// @route   PUT /api/complaints/:id
+export const updateComplaintStatus = async (req, res) => {
+  try {
+    const { status } = req.body;
+    const complaint = await complaintService.updateStatus(req.params.id, status);
+    res.json({ success: true, data: complaint });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

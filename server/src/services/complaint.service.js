@@ -51,3 +51,12 @@ export const createNewComplaint = async (title, description, userId, location) =
 export const getUserComplaints = async (userId) => {
   return await Complaint.find({ citizen: userId }).sort({ createdAt: -1 });
 };
+
+export const getAllComplaints = async () => {
+  // Populate 'citizen' to show their name in the table
+  return await Complaint.find().populate('citizen', 'name email').sort({ createdAt: -1 });
+};
+
+export const updateStatus = async (id, status) => {
+  return await Complaint.findByIdAndUpdate(id, { status }, { new: true });
+};
