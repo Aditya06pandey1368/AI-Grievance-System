@@ -7,19 +7,20 @@ from sklearn.pipeline import make_pipeline
 # 1. THE DATASET (Flashcards for the AI)
 # In a real startup, this would come from a CSV file with thousands of rows.
 data = [
-    # Road / Transport
-    ("Deep pothole on main street causing accidents", "Road"),
-    ("Traffic light not working at huge intersection", "Road"),
-    ("The road is broken and very dangerous", "Road"),
-    ("Street sign fell down blocking the path", "Road"),
+    # Road / Transport (Focus on surface, potholes, traffic)
+    ("Deep pothole on main road causing accidents", "Road"),
+    ("Traffic light signal stuck on red", "Road"),
+    ("The asphalt is broken and dangerous", "Road"),
     ("Zebra crossing paint has faded away", "Road"),
+    ("Huge crack in the middle of the highway", "Road"),
     
-    # Electricity
+    # Electricity (Focus on lights, wires, poles, sparks)
+    ("Street light pole is rusted and falling", "Electricity"), # <--- Teaching it "Pole"
+    ("Street light not working at night", "Electricity"),      # <--- Teaching it "Light"
     ("Electric wire hanging loose sparks coming out", "Electricity"),
-    ("Power cut in our area for 24 hours", "Electricity"),
     ("Transformer caught fire near my house", "Electricity"),
-    ("Voltage fluctuation damaged my appliances", "Electricity"),
-    ("Street light not working its very dark", "Electricity"),
+    ("No power supply in the colony", "Electricity"),
+    ("Voltage fluctuation damaged appliances", "Electricity"),
     
     # Water / Sanitation
     ("Dirty water coming from the tap smells bad", "Water"),

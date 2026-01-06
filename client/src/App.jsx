@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
+import SubmitComplaint from "./pages/SubmitComplaint";
 
 // Placeholder for Home
 const Home = () => (
@@ -17,6 +18,7 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/submit-complaint" element={<SubmitComplaint />} />
       </Routes>
     </BrowserRouter>
   );
