@@ -1,6 +1,8 @@
 import { motion } from "framer-motion";
 
-const Input = ({ label, error, ...props }) => {
+const Input = ({ label, error, isTextarea, ...props }) => {
+  const Component = isTextarea ? motion.textarea : motion.input;
+
   return (
     <div className="space-y-1">
       {label && (
@@ -9,11 +11,11 @@ const Input = ({ label, error, ...props }) => {
         </label>
       )}
       <div className="relative">
-        <motion.input
-          whileFocus={{ scale: 1.01 }}
+        <Component
+          whileFocus={{ scale: 1.005 }}
           className={`
-            w-full px-4 py-3 rounded-xl bg-white dark:bg-dark-card 
-            border-2 transition-all outline-none
+            w-full px-4 py-3 rounded-xl bg-white dark:bg-slate-800 
+            border-2 transition-all outline-none resize-none
             ${error 
               ? 'border-red-500 focus:ring-4 focus:ring-red-500/10' 
               : 'border-slate-200 dark:border-slate-700 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10'

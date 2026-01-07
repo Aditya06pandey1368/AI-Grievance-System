@@ -1,5 +1,12 @@
 import multer from 'multer';
 import path from 'path';
+import fs from 'fs';
+
+// Ensure upload directory exists
+const uploadDir = 'uploads/';
+if (!fs.existsSync(uploadDir)){
+    fs.mkdirSync(uploadDir);
+}
 
 // 1. Storage Configuration
 const storage = multer.diskStorage({
@@ -7,7 +14,7 @@ const storage = multer.diskStorage({
     cb(null, 'uploads/'); // Save to 'uploads' folder
   },
   filename(req, file, cb) {
-    // Rename file to avoid conflicts: fieldname-timestamp.jpg
+    // Rename file to avoid conflicts: fieldname-timestamp.ext
     cb(null, `${file.fieldname}-${Date.now()}${path.extname(file.originalname)}`);
   },
 });
@@ -32,3 +39,5 @@ export const upload = multer({
     checkFileType(file, cb);
   },
 });
+
+export default upload;

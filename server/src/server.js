@@ -7,12 +7,15 @@ import authRoutes from './routes/auth.routes.js';
 import departmentRoutes from './routes/department.routes.js';
 import complaintRoutes from './routes/complaint.routes.js';
 import path from 'path';
+import startCronJobs from './src/services/cron.service.js';
 
 // 1. Load Environment Variables
 dotenv.config();
 
 // 2. Connect to Database
 connectDB();
+
+startCronJobs();
 
 // 3. Initialize App
 const app = express();

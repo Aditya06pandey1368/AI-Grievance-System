@@ -1,7 +1,6 @@
 import jwt from 'jsonwebtoken';
 import User from '../models/User.model.js';
 
-// 1. PROTECT: Verifies the user is logged in
 export const protect = async (req, res, next) => {
   let token;
 
@@ -18,9 +17,14 @@ export const protect = async (req, res, next) => {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
       // Get user from the ID in the token (exclude password)
+      // We explicitly select 'role' and 'trustScore' for the new system logic
       req.user = await User.findById(decoded.id).select('-password');
 
-      next(); // Move to the next function (the controller)
+      if (!req.user) {
+        return res.status(401).json({ message: 'Not authorized, user not found' });
+      }
+
+      next(); // Move to the next function
     } catch (error) {
       console.error(error);
       res.status(401).json({ message: 'Not authorized, token failed' });
@@ -30,16 +34,4 @@ export const protect = async (req, res, next) => {
   if (!token) {
     res.status(401).json({ message: 'Not authorized, no token' });
   }
-};
-
-// 2. AUTHORIZE: Verifies the user has a specific role (e.g., 'admin')
-export const authorize = (...roles) => {
-  return (req, res, next) => {
-    if (!roles.includes(req.user.role)) {
-      return res.status(403).json({ 
-        message: `User role '${req.user.role}' is not authorized to access this route` 
-      });
-    }
-    next();
-  };
 };
