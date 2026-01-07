@@ -1,35 +1,45 @@
 import User from '../models/User.model.js';
 import generateToken from '../utils/generateToken.js';
+import AuditLog from '../models/AuditLog.model.js';
 
-// @desc    Register a new user (Citizen)
+// @desc    Register a new user (Citizen only)
 // @route   POST /api/auth/register
-// @access  Public
 export const registerUser = async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
-    // 1. Check if user already exists
     const userExists = await User.findOne({ email });
     if (userExists) {
       return res.status(400).json({ message: 'User already exists' });
     }
 
-    // 2. Create the user (The model will automatically hash the password)
+    // Force role to citizen for public registration
     const user = await User.create({
       name,
       email,
       password,
-      role: 'citizen' // Default role is always citizen for safety
+      role: 'citizen',
+      trustScore: 100,
+      isActive: true
     });
 
-    // 3. Send back the User Data + Token
     if (user) {
+      // Log the event
+      await AuditLog.create({
+        action: 'USER_REGISTER',
+        targetId: user._id,
+        targetModel: 'User',
+        details: 'New citizen registration',
+        ipAddress: req.ip
+      });
+
       res.status(201).json({
         _id: user._id,
         name: user.name,
         email: user.email,
         role: user.role,
-        token: generateToken(user._id, user.role), // <-- The ID Card
+        trustScore: user.trustScore,
+        token: generateToken(user._id, user.role),
       });
     } else {
       res.status(400).json({ message: 'Invalid user data' });
@@ -41,21 +51,35 @@ export const registerUser = async (req, res) => {
 
 // @desc    Login user & get token
 // @route   POST /api/auth/login
-// @access  Public
 export const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // 1. Find user by email (we must explicitly select password because we hid it in model)
     const user = await User.findOne({ email }).select('+password');
 
-    // 2. Check if user exists AND password matches
     if (user && (await user.matchPassword(password))) {
+      
+      // 1. CHECK BAN STATUS
+      if (!user.isActive) {
+        await AuditLog.create({
+          action: 'LOGIN_BLOCKED',
+          actor: user._id,
+          details: 'User tried to login but is banned due to low trust score',
+          ipAddress: req.ip
+        });
+        return res.status(403).json({ message: 'Account suspended due to low Trust Score. Contact Admin.' });
+      }
+
+      // 2. Update Last Login
+      user.lastLogin = Date.now();
+      await user.save();
+
       res.json({
         _id: user._id,
         name: user.name,
         email: user.email,
         role: user.role,
+        trustScore: user.trustScore, // Frontend can show this now
         token: generateToken(user._id, user.role),
       });
     } else {

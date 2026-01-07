@@ -4,9 +4,14 @@ import Department from '../models/Department.model.js';
 // @route   POST /api/departments
 export const createDepartment = async (req, res) => {
   try {
-    const { name, code } = req.body;
+    const { name, code, defaultSLAHours } = req.body;
     
-    const dept = await Department.create({ name, code });
+    const dept = await Department.create({ 
+      name, 
+      code,
+      defaultSLAHours: defaultSLAHours || 48
+    });
+
     res.status(201).json(dept);
   } catch (error) {
     res.status(500).json({ message: error.message });
