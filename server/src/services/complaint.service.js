@@ -24,15 +24,13 @@ const analyzeComplaint = async (text) => {
 };
 
 // --- MAIN SERVICE FUNCTION ---
-export const createNewComplaint = async (title, description, userId, location) => {
+export const createNewComplaint = async (title, description, userId, location, imageUrl) => {
   
-  // 1. Call REAL AI
   const aiResult = await analyzeComplaint(title + " " + description);
   
-  // 2. Find Department (e.g., Road Dept)
+  // ... department logic ...
   let department = await Department.findOne({ name: { $regex: aiResult.category, $options: 'i' } });
   
-  // 3. Create Complaint
   const newComplaint = await Complaint.create({
     title,
     description,
@@ -42,7 +40,8 @@ export const createNewComplaint = async (title, description, userId, location) =
     priorityScore: aiResult.priorityScore,
     priorityLevel: aiResult.priorityLevel,
     department: department ? department._id : null,
-    status: 'classified'
+    status: 'classified',
+    images: imageUrl ? [imageUrl] : [] // <--- Save to DB (Make sure your Model has an 'image' field!)
   });
 
   return newComplaint;

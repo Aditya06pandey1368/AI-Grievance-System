@@ -6,6 +6,7 @@ import connectDB from './config/db.js';
 import authRoutes from './routes/auth.routes.js';
 import departmentRoutes from './routes/department.routes.js';
 import complaintRoutes from './routes/complaint.routes.js';
+import path from 'path';
 
 // 1. Load Environment Variables
 dotenv.config();
@@ -15,11 +16,13 @@ connectDB();
 
 // 3. Initialize App
 const app = express();
+app.use(express.json());
 
 // 4. Middlewares (Security & Parsing)
 app.use(helmet()); // Adds security headers
-app.use(cors());   // Allows frontend access
-app.use(express.json()); // Parses JSON body
+app.use(cors()); 
+const __dirname = path.resolve();
+app.use('/uploads', express.static(path.join(__dirname, '/uploads')));  // Allows frontend access
 app.use('/api/complaints', complaintRoutes);
 
 // 5. Test Route

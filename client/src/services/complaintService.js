@@ -1,7 +1,11 @@
 import api from './api';
 
-export const createComplaint = async (complaintData) => {
-  const response = await api.post('/complaints', complaintData);
+export const createComplaint = async (formData) => {
+  const response = await api.post('/complaints', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data', 
+    },
+  });
   return response.data;
 };
 

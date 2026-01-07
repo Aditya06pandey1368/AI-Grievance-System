@@ -5,15 +5,24 @@ import * as complaintService from '../services/complaint.service.js';
 // @access  Private (Citizen)
 export const submitComplaint = async (req, res) => {
   try {
+    console.log("📂 File received:", req.file);
     const { title, description, location } = req.body;
-    const userId = req.user._id; // Comes from 'protect' middleware
+    const userId = req.user._id;
 
-    // Delegate to Service
+    // 👇 Check if a file was uploaded
+    let imageUrl = '';
+    if (req.file) {
+      // Create the URL: http://localhost:5000/uploads/filename.jpg
+      imageUrl = `/uploads/${req.file.filename}`;
+    }
+
+    // Call service (Pass imageUrl)
     const complaint = await complaintService.createNewComplaint(
       title, 
       description, 
       userId, 
-      location
+      location,
+      imageUrl // <--- Pass this new arg
     );
 
     res.status(201).json({ success: true, data: complaint });

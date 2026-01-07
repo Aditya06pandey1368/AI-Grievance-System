@@ -16,26 +16,36 @@ const SubmitComplaint = () => {
   const [formData, setFormData] = useState({ title: "", description: "", location: "" });
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null); // Stores the AI response
+  const [file, setFile] = useState(null);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if(!formData.title || !formData.description || !formData.location) {
+    if (!formData.title || !formData.description || !formData.location) {
       toast.error("Please fill all fields");
       return;
     }
 
     setLoading(true);
     try {
-      // 1. Send to Backend (which calls Python)
-      const res = await createComplaint(formData);
-      
+      // 👇 CREATE FORMDATA OBJECT
+      const data = new FormData();
+      data.append('title', formData.title);
+      data.append('description', formData.description);
+      data.append('location', formData.location);
+      if (file) {
+        data.append('image', file); // 'image' must match the backend route config
+      }
+
+      // Send FormData instead of JSON
+      const res = await createComplaint(data);
+
       // 2. Simulate a slight delay so user sees the cool animation
       setTimeout(() => {
         setResult(res.data); // Save the AI result to state
         setLoading(false);
         toast.success("Complaint Classified Successfully!");
       }, 1500);
-      
+
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to submit");
       setLoading(false);
@@ -62,7 +72,7 @@ const SubmitComplaint = () => {
 
           <Card className="relative overflow-hidden">
             <AnimatePresence mode="wait">
-              
+
               {/* STATE 1: LOADING (AI SCANNING) */}
               {loading ? (
                 <motion.div
@@ -74,7 +84,7 @@ const SubmitComplaint = () => {
                   <AILoader />
                 </motion.div>
               ) : result ? (
-                
+
                 /* STATE 2: SUCCESS RESULT (AI ANALYSIS) */
                 <motion.div
                   key="result"
@@ -85,7 +95,7 @@ const SubmitComplaint = () => {
                   <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto text-green-600 dark:text-green-400">
                     <CheckCircle className="w-8 h-8" />
                   </div>
-                  
+
                   <div>
                     <h2 className="text-2xl font-bold text-slate-800 dark:text-white">
                       Complaint Registered!
@@ -104,8 +114,8 @@ const SubmitComplaint = () => {
                     <div>
                       <p className="text-xs text-slate-400 uppercase font-bold tracking-wider">Priority</p>
                       <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-bold mt-1
-                        ${result.priorityLevel === 'High' || result.priorityLevel === 'Critical' 
-                          ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' 
+                        ${result.priorityLevel === 'High' || result.priorityLevel === 'Critical'
+                          ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'
                           : 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'}`
                       }>
                         {result.priorityLevel === 'Critical' && <AlertTriangle className="w-4 h-4" />}
@@ -125,21 +135,21 @@ const SubmitComplaint = () => {
                 </motion.div>
 
               ) : (
-                
+
                 /* STATE 3: INPUT FORM */
-                <motion.form 
+                <motion.form
                   key="form"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  onSubmit={handleSubmit} 
+                  onSubmit={handleSubmit}
                   className="space-y-6"
                 >
                   <Input
                     label="Issue Title"
                     placeholder="e.g., Pothole on Main Street"
                     value={formData.title}
-                    onChange={(e) => setFormData({...formData, title: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   />
 
                   <Input
@@ -147,7 +157,7 @@ const SubmitComplaint = () => {
                     placeholder="e.g., Sector 62, Noida"
                     icon={<MapPin />}
                     value={formData.location}
-                    onChange={(e) => setFormData({...formData, location: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                   />
 
                   <div className="space-y-1">
@@ -159,8 +169,25 @@ const SubmitComplaint = () => {
                       className="w-full px-4 py-3 rounded-xl bg-white dark:bg-dark-card border-2 border-slate-200 dark:border-slate-700 focus:border-primary-500 outline-none transition-all text-slate-900 dark:text-white placeholder-slate-400"
                       placeholder="Describe the issue in detail..."
                       value={formData.description}
-                      onChange={(e) => setFormData({...formData, description: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     />
+                  </div>
+                  {/* Image Upload Field */}
+                  <div className="space-y-1">
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 ml-1">
+                      Evidence (Optional)
+                    </label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => setFile(e.target.files[0])}
+                      className="block w-full text-sm text-slate-500
+                      file:mr-4 file:py-2 file:px-4
+                      file:rounded-full file:border-0
+                      file:text-sm file:font-semibold
+                      file:bg-primary-50 file:text-primary-700
+                      hover:file:bg-primary-100 dark:file:bg-primary-900/20 dark:file:text-primary-400
+                      cursor-pointer"/>
                   </div>
 
                   <Button isLoading={loading} className="w-full text-lg">

@@ -4,27 +4,37 @@ import bcrypt from 'bcryptjs';
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
   email: { type: String, required: true, unique: true, lowercase: true },
-  password: { type: String, required: true, select: false }, // 'select: false' hides password from queries
+  password: { type: String, required: true, select: false },
+  
+  // Updated Roles for Enterprise System
   role: {
     type: String,
-    enum: ['citizen', 'officer', 'admin', 'super_admin'],
+    enum: ['citizen', 'officer', 'dept_admin', 'super_admin'],
     default: 'citizen'
   },
-  department: { type: mongoose.Schema.Types.ObjectId, ref: 'Department' }
+
+  // --- NEW: FRAUD PREVENTION ---
+  trustScore: { 
+    type: Number, 
+    default: 100, 
+    min: 0, 
+    max: 100 
+  },
+  
+  // To block users who spam fake complaints
+  isActive: { type: Boolean, default: true }, 
+
+  lastLogin: { type: Date }
+
 }, { timestamps: true });
 
-// --- MIDDLEWARE: Encrypt password before saving ---
+// --- MIDDLEWARE ---
 userSchema.pre('save', async function(next) {
-  // Only hash the password if it has been modified (or is new)
-  if (!this.isModified('password')) {
-    return next();
-  }
-  // Generate a "salt" (random data) and hash the password
+  if (!this.isModified('password')) return next();
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
 });
 
-// --- METHOD: Check if entered password matches hashed password ---
 userSchema.methods.matchPassword = async function(enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
