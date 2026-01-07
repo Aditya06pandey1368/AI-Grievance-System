@@ -7,14 +7,19 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // 1. Check if user is already logged in when page loads
+  // 1. Check Login Status on Load
   useEffect(() => {
     const checkLoggedIn = () => {
       const token = localStorage.getItem('token');
       const savedUser = localStorage.getItem('user');
       
       if (token && savedUser) {
-        setUser(JSON.parse(savedUser));
+        try {
+          setUser(JSON.parse(savedUser));
+        } catch (e) {
+          console.error("Failed to parse user data");
+          localStorage.removeItem('user');
+        }
       }
       setLoading(false);
     };
@@ -26,15 +31,13 @@ export const AuthProvider = ({ children }) => {
     try {
       const { data } = await api.post('/auth/login', { email, password });
       
-      // Save to storage
+      // Save to LocalStorage
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data));
       
-      // Update State
       setUser(data);
-      return { success: true };
+      return { success: true, data };
     } catch (error) {
-      console.error("Login Error:", error.response?.data?.message);
       return { 
         success: false, 
         message: error.response?.data?.message || "Server Error" 
@@ -47,6 +50,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setUser(null);
+    window.location.href = '/login'; // Force redirect
   };
 
   return (
@@ -56,5 +60,4 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-// Custom Hook to use it easily
 export const useAuth = () => useContext(AuthContext);

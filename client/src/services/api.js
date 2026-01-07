@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-// 1. Create the Instance
+// 1. Create the Axios Instance
 const api = axios.create({
   baseURL: 'http://localhost:5000/api', // Pointing to your Node Server
   headers: {
@@ -8,18 +8,33 @@ const api = axios.create({
   },
 });
 
-// 2. The Interceptor (The Automatic ID Card Attacher)
-// Before any request leaves the browser, this code runs.
+// 2. Request Interceptor (Attaches Token)
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
     if (token) {
-      // If we have a token, stick it in the header
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
   (error) => Promise.reject(error)
+);
+
+// 3. Response Interceptor (Handles Token Expiry)
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    // If backend says "Unauthorized" (401), wipe data and redirect
+    if (error.response && error.response.status === 401) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      // Optional: Redirect to login only if not already there
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
+    }
+    return Promise.reject(error);
+  }
 );
 
 export default api;
