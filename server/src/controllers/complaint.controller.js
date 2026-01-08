@@ -1,6 +1,7 @@
 import Complaint from '../models/Complaint.model.js';
 import User from '../models/User.model.js';
 import AuditLog from '../models/AuditLog.model.js';
+import Officer from '../models/Officer.model.js';
 // Note: We removed Officer import to rely on User Ref for simplicity
 
 // @desc    Submit a new grievance
@@ -9,33 +10,45 @@ export const createComplaint = async (req, res) => {
   try {
     const { title, description, location, zone } = req.body;
     const userId = req.user._id;
-    const files = req.files; // Multer files
 
     // 1. Validation
     if (!zone || !title || !location) {
-      return res.status(400).json({ success: false, message: "Title, Location, and Zone are required." });
+      return res.status(400).json({ success: false, message: "Zone is required." });
     }
 
-    // 2. Handle Multiple Images
-    let imageUrls = [];
-    if (files && files.length > 0) {
-      imageUrls = files.map(file => `/uploads/${file.filename}`);
+    // 2. AUTO-ASSIGNMENT LOGIC (Fixed for Exact String Matching)
+    let assignedOfficerId = null;
+    let complaintStatus = 'submitted';
+
+    // We search for an officer who has the EXACT string "Ward 1 (North)" in their list
+    const responsibleOfficer = await Officer.findOne({ 
+        jurisdictionZones: { $in: [zone] } 
+    }).populate('user');
+
+    if (responsibleOfficer) {
+        assignedOfficerId = responsibleOfficer.user._id;
+        complaintStatus = 'assigned';
     }
 
-    // 3. Mock AI Classification (To prevent crashes if ML is offline)
-    // In production, you would call axios.post('http://localhost:8000/predict') here.
+    // 3. AI LOGIC (Fixed Priority Score)
     let aiCategory = 'Other';
-    let aiPriority = 'Medium';
-    
-    // Simple Keyword matching for demo purposes
+    let aiPriorityLevel = 'Medium';
+    let aiPriorityScore = 50; // Default Score
+
     const lowerDesc = description.toLowerCase();
+    
     if (lowerDesc.includes('fire') || lowerDesc.includes('accident')) {
-        aiCategory = 'Fire';
-        aiPriority = 'Critical';
-    } else if (lowerDesc.includes('water') || lowerDesc.includes('leak')) {
-        aiCategory = 'Water';
+        aiCategory = 'Fire'; 
+        aiPriorityLevel = 'Critical';
+        aiPriorityScore = 95; // High score for critical
     } else if (lowerDesc.includes('road') || lowerDesc.includes('pothole')) {
         aiCategory = 'Road';
+        aiPriorityLevel = 'High';
+        aiPriorityScore = 80;
+    } else if (lowerDesc.includes('water')) { 
+        aiCategory = 'Water';
+        aiPriorityLevel = 'Medium';
+        aiPriorityScore = 60;
     }
 
     // 4. Create Complaint
@@ -43,27 +56,28 @@ export const createComplaint = async (req, res) => {
       title,
       description,
       location,
-      zone,
+      zone, 
       citizen: userId,
-      images: imageUrls,
       
-      // Auto-filled by AI logic above
+      // AI DATA
       category: aiCategory,
-      priorityLevel: aiPriority,
+      priorityLevel: aiPriorityLevel,
+      priorityScore: aiPriorityScore, // <--- Added Score
       
-      // FORCE STATUS to 'submitted' to fix Validation Error
-      status: 'submitted',
+      assignedOfficer: assignedOfficerId,
+      status: complaintStatus, 
 
       history: [{
         action: 'SUBMITTED',
         performedBy: userId,
-        remarks: 'Complaint submitted by citizen'
+        remarks: assignedOfficerId 
+          ? `Auto-assigned to ${responsibleOfficer.user.name}` 
+          : 'Submitted (Waiting for assignment)'
       }]
     });
 
     res.status(201).json({ success: true, data: complaint });
   } catch (error) {
-    console.error("Submit Complaint Error:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
