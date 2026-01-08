@@ -1,8 +1,9 @@
 import express from 'express';
 import upload from '../middlewares/uploadMiddleware.js'; 
 import { 
-  submitComplaint, 
+  createComplaint,       // <--- CHANGED THIS (was submitComplaint)
   getMyHistory, 
+  getComplaintById,      // <--- Added this (needed for Complaint Details page)
   updateComplaintStatus 
 } from '../controllers/complaint.controller.js';
 
@@ -15,10 +16,13 @@ const router = express.Router();
 
 // 1. Submit Complaint
 // We use 'upload.array' here to support up to 5 images
-router.post('/', protect, upload.array('images', 5), submitComplaint);
+router.post('/', protect, upload.array('images', 5), createComplaint); // <--- Use createComplaint here
 
 // 2. Get History
 router.get('/my-history', protect, getMyHistory);
+
+// 3. Get Single Complaint Details (Needed for frontend /complaint/:id)
+router.get('/:id', protect, getComplaintById); 
 
 
 // --- OFFICER / ADMIN ROUTES ---

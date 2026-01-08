@@ -16,9 +16,12 @@ const complaintSchema = new mongoose.Schema({
   category: { 
     type: String, 
     required: true,
-    enum: ['Road', 'Electricity', 'Water', 'Police', 'Medical', 'Fire', 'Other'] 
+    default: 'Other',
+    // Using a broad list to prevent validation errors if AI guesses something new
+    enum: ['Road', 'Electricity', 'Water', 'Police', 'Medical', 'Fire', 'Other', 'General'] 
   },
   
+  // Optional: If you link specific departments later
   department: { type: mongoose.Schema.Types.ObjectId, ref: 'Department' },
 
   // --- PRIORITY (0-100 Scale) ---
@@ -29,12 +32,19 @@ const complaintSchema = new mongoose.Schema({
     default: 'Medium' 
   },
 
-  // --- LOCATION & ROUTING (NEW) ---
-  location: { type: String, required: true }, // Full address
-  zone: { type: String, required: true },     // e.g., "Ward-12" (Used for matching Officer)
+  // --- AI ANALYSIS DATA (New) ---
+  aiAnalysis: {
+    confidence: Number,
+    summary: String
+  },
+
+  // --- LOCATION & ROUTING ---
+  location: { type: String, required: true }, 
+  zone: { type: String, required: true }, // e.g., "Ward-1"
   
   // --- ASSIGNMENT ---
-  assignedOfficer: { type: mongoose.Schema.Types.ObjectId, ref: 'Officer' },
+  // CHANGED: Refers to 'User' so it works with the seed script users easily
+  assignedOfficer: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 
   // --- STATUS & SLA ---
   status: {
@@ -42,13 +52,12 @@ const complaintSchema = new mongoose.Schema({
     enum: ['submitted', 'assigned', 'in_progress', 'resolved', 'closed', 'rejected'],
     default: 'submitted'
   },
-  deadline: { type: Date }, // Automatically calculated based on priority
+  deadline: { type: Date }, 
   isBreached: { type: Boolean, default: false },
 
-  // --- AUDIT TRAIL (NEW) ---
-  // Keeps a permanent record of every change
+  // --- AUDIT TRAIL ---
   history: [{
-    action: String, // e.g., "STATUS_UPDATED", "OFFICER_ASSIGNED"
+    action: String, 
     performedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     timestamp: { type: Date, default: Date.now },
     remarks: String
@@ -65,6 +74,6 @@ const complaintSchema = new mongoose.Schema({
 // Optimize queries
 complaintSchema.index({ citizen: 1, status: 1 });
 complaintSchema.index({ assignedOfficer: 1, status: 1 });
-complaintSchema.index({ zone: 1, department: 1 }); // Speed up routing
+complaintSchema.index({ zone: 1 }); 
 
 export default mongoose.model('Complaint', complaintSchema);

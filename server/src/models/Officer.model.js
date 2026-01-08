@@ -10,7 +10,7 @@ const officerSchema = new mongoose.Schema({
   },
   
   department: { 
-    type: mongoose.Schema.Types.ObjectId, 
+    type: String, 
     ref: 'Department', 
     required: true 
   },
