@@ -29,6 +29,7 @@ import DeptDashboard from "./pages/admin/DeptDashboard";
 import OfficerManagement from "./pages/admin/OfficerManagement";
 import SLATracker from "./pages/admin/SLATracker";
 import FraudMonitor from "./pages/admin/FraudMonitor";
+import OfficerList from "./pages/admin/OfficerList";
 
 // --- SUPER ADMIN PAGES ---
 // FIX: Imported 'AdminDashboard' instead of 'SuperDashboard' to match your file structure
@@ -73,6 +74,7 @@ function App() {
               <Route element={<DashboardLayout role="dept_admin" />}>
                 <Route path="/admin/dashboard" element={<DeptDashboard />} />
                 <Route path="/admin/officers" element={<OfficerManagement />} />
+                <Route path="/admin/officerslist" element={<OfficerList />} />
                 <Route path="/admin/sla" element={<SLATracker />} />
                 <Route path="/admin/fraud" element={<FraudMonitor />} />
               </Route>

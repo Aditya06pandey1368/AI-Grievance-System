@@ -16,6 +16,16 @@ const ComplaintAction = () => {
   const handleAction = async (status) => {
     if (!remarks) return toast.error("Please add remarks first");
     
+    // --- BUG 3 FIX: CONFIRMATION POPUP ---
+    const isConfirmed = window.confirm(
+        status === 'rejected' 
+        ? "⚠️ Are you sure you want to REJECT this complaint?\n\nThis will decrease the citizen's Trust Score."
+        : "✅ Are you sure you want to RESOLVE this complaint?"
+    );
+
+    if (!isConfirmed) return; 
+    // -------------------------------------
+
     setLoading(true);
     try {
       await api.put(`/complaints/${id}/status`, { status, remarks });

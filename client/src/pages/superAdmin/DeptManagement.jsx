@@ -8,10 +8,9 @@ import { toast } from "react-hot-toast";
 
 const DeptManagement = () => {
   const [departments, setDepartments] = useState([]);
-  const [formData, setFormData] = useState({ 
-    name: "", 
-    code: "", 
-    defaultSLAHours: 48 
+  const [formData, setFormData] = useState({
+    name: "", code: "", defaultSLAHours: 48,
+    adminName: "", adminEmail: "", adminPassword: "" // New Fields
   });
   const [loading, setLoading] = useState(false);
 
@@ -35,11 +34,12 @@ const DeptManagement = () => {
     setLoading(true);
     try {
       await api.post("/departments", formData);
-      toast.success("Department created successfully!");
-      setFormData({ name: "", code: "", defaultSLAHours: 48 }); // Reset Form
-      fetchDepartments(); // Refresh List
+      toast.success("Department & Admin created!");
+      // Reset all fields
+      setFormData({ name: "", code: "", defaultSLAHours: 48, adminName: "", adminEmail: "", adminPassword: "" });
+      fetchDepartments();
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to create department");
+      toast.error(error.response?.data?.message || "Failed");
     } finally {
       setLoading(false);
     }
@@ -48,41 +48,28 @@ const DeptManagement = () => {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-dark-bg transition-colors duration-300">
       <Navbar />
-      
+
       <div className="pt-24 px-4 max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
-        
+
         {/* --- LEFT COLUMN: CREATE FORM --- */}
         <div className="md:col-span-1">
           <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700">
             <h2 className="text-xl font-bold mb-4 text-slate-900 dark:text-white flex items-center gap-2">
-              <Plus className="w-5 h-5 text-primary-500"/> Add Department
+              <Plus className="w-5 h-5 text-primary-500" /> Add Department
             </h2>
-            
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <Input 
-                label="Department Name" 
-                placeholder="e.g. Roads & Highways" 
-                value={formData.name} 
-                onChange={e => setFormData({...formData, name: e.target.value})} 
-              />
-              
-              <Input 
-                label="Department Code (Unique)" 
-                placeholder="e.g. DEPT_ROADS" 
-                value={formData.code} 
-                onChange={e => setFormData({...formData, code: e.target.value.toUpperCase()})} 
-              />
-              
-              <Input 
-                label="Default SLA (Hours)" 
-                type="number" 
-                value={formData.defaultSLAHours} 
-                onChange={e => setFormData({...formData, defaultSLAHours: e.target.value})} 
-              />
 
-              <Button isLoading={loading} className="w-full mt-2">
-                Create Department
-              </Button>
+            <form onSubmit={handleSubmit} className="space-y-3">
+              <h3 className="font-semibold text-slate-700 dark:text-slate-300 border-b pb-2">Department Details</h3>
+              <Input label="Dept Name" placeholder="e.g. Fire Safety" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
+              <Input label="Dept Code" placeholder="e.g. DEPT_FIRE" value={formData.code} onChange={e => setFormData({ ...formData, code: e.target.value.toUpperCase() })} />
+              <Input label="SLA (Hours)" type="number" value={formData.defaultSLAHours} onChange={e => setFormData({ ...formData, defaultSLAHours: e.target.value })} />
+
+              <h3 className="font-semibold text-slate-700 dark:text-slate-300 border-b pb-2 pt-2">Assign Admin</h3>
+              <Input label="Admin Name" placeholder="e.g. Chief Fire Officer" value={formData.adminName} onChange={e => setFormData({ ...formData, adminName: e.target.value })} />
+              <Input label="Admin Email" type="email" value={formData.adminEmail} onChange={e => setFormData({ ...formData, adminEmail: e.target.value })} />
+              <Input label="Password" type="password" value={formData.adminPassword} onChange={e => setFormData({ ...formData, adminPassword: e.target.value })} />
+
+              <Button isLoading={loading} className="w-full mt-4">Create Department & Admin</Button>
             </form>
           </div>
         </div>
@@ -91,7 +78,7 @@ const DeptManagement = () => {
         <div className="md:col-span-2">
           <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700">
             <h2 className="text-xl font-bold mb-6 text-slate-900 dark:text-white flex items-center gap-2">
-              <Building2 className="w-5 h-5 text-blue-500"/> Existing Departments
+              <Building2 className="w-5 h-5 text-blue-500" /> Existing Departments
             </h2>
 
             {departments.length === 0 ? (
@@ -113,7 +100,7 @@ const DeptManagement = () => {
                         </span>
                       </div>
                     </div>
-                    
+
                     {/* Only show delete if you implement delete API later */}
                     <div className="text-slate-400 text-sm">
                       {dept.defaultSLAHours}h SLA
