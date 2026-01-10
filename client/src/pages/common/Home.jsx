@@ -255,10 +255,7 @@ const FeatureCard = ({ icon, color, title, desc, delay }) => (
         {desc}
       </p>
 
-      {/* Arrow that appears on hover */}
-      <div className="mt-8 flex items-center text-primary-500 font-bold text-sm opacity-0 group-hover:opacity-100 transform translate-x-[-10px] group-hover:translate-x-0 transition-all duration-300">
-        Learn more <ArrowRight className="ml-2 w-4 h-4" />
-      </div>
+      
     </div>
   </motion.div>
 );
