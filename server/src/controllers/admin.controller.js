@@ -68,23 +68,22 @@ export const deleteUser = async (req, res) => {
   try {
     const userId = req.params.id;
 
-    // 1. Delete the User from the User Collection
-    const deletedUser = await User.findByIdAndDelete(userId);
-    
-    if (!deletedUser) {
+    // 1. Check if user exists first
+    const user = await User.findById(userId);
+    if (!user) {
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    // 2. CRITICAL STEP: Remove this user from any Department they are assigned to
-    // This finds any department where 'admin' is the deleted user's ID and removes that field.
-    await Department.updateMany(
-      { admin: userId }, 
-      { $unset: { admin: "" } } 
-    );
+    // 2. CASCADE DELETE: Delete the Department managed by this admin
+    // This finds any department where 'admin' matches this user's ID and removes it.
+    await Department.deleteMany({ admin: userId });
+
+    // 3. Delete the User
+    await User.findByIdAndDelete(userId);
 
     res.status(200).json({ 
       success: true, 
-      message: "User deleted and removed from Department successfully" 
+      message: "Admin and their Department deleted successfully" 
     });
 
   } catch (error) {
@@ -109,5 +108,22 @@ export const updateUserStatus = async (req, res) => {
     res.json({ success: true, data: user });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+export const getAllAuditLogs = async (req, res) => {
+  try {
+    const logs = await AuditLog.find()
+      .populate("actor", "name email role") // Get details of who did the action
+      .sort({ timestamp: -1 }) // Newest first
+      .limit(100); // Limit to last 100 logs for performance
+
+    res.status(200).json({
+      success: true,
+      data: logs,
+    });
+  } catch (error) {
+    console.error("Fetch Logs Error:", error);
+    res.status(500).json({ success: false, message: "Server Error" });
   }
 };
