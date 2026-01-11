@@ -5,49 +5,51 @@ import {
   Clock, 
   AlertCircle, 
   RefreshCcw, 
-  Filter,
-  Search
 } from "lucide-react";
 import Navbar from "../../components/layout/Navbar";
-import api from "../../services/api"; // Assuming this has your axios setup
+import api from "../../services/api";
+import { toast } from "react-hot-toast";
 
 const AdminDashboard = () => {
   const [complaints, setComplaints] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState("all"); // 'all', 'pending', 'resolved'
+  const [filter, setFilter] = useState("all");
 
-  // 1. Fetch Data Function
+  // 1. Fetch Data
   const fetchAllComplaints = async () => {
     setLoading(true);
     try {
-      // Make sure this matches your backend route exactly
-      const { data } = await api.get('/complaints/admin/all');
+      const res = await api.get('/complaints/admin/all');
+      // Robust check: handles if data comes as res.data.data or just res.data
+      const data = res.data.data || res.data || [];
       
-      if (data.success) {
-        setComplaints(data.data);
+      if (Array.isArray(data)) {
+        setComplaints(data);
+      } else {
+        console.error("API did not return an array:", data);
+        setComplaints([]);
       }
     } catch (error) {
       console.error("Failed to fetch complaints:", error);
+      toast.error("Failed to load dashboard data");
     } finally {
       setLoading(false);
     }
   };
 
-  // Initial Load
   useEffect(() => {
     fetchAllComplaints();
   }, []);
 
-  // 2. Handle Status Update (Live)
+  // 2. Handle Status Update
   const handleStatusChange = async (id, newStatus) => {
     try {
-      // Optimistic UI Update (Update screen before server responds for speed)
+      // Optimistic Update
       setComplaints(prev => prev.map(c => c._id === id ? { ...c, status: newStatus } : c));
-      
-      // API Call
-      await api.put(`/complaints/${id}`, { status: newStatus });
+      await api.patch(`/complaints/${id}/status`, { status: newStatus });
+      toast.success(`Status updated to ${newStatus}`);
     } catch (error) {
-      alert("Failed to update status");
+      toast.error("Update failed");
       fetchAllComplaints(); // Revert on error
     }
   };
@@ -59,6 +61,13 @@ const AdminDashboard = () => {
     if (filter === 'pending') return c.status !== 'resolved' && c.status !== 'rejected';
     return true;
   });
+
+  // 4. Dynamic Stats Calculation
+  const stats = {
+    pending: complaints.filter(c => c.status !== 'resolved' && c.status !== 'rejected').length,
+    resolved: complaints.filter(c => c.status === 'resolved').length,
+    total: complaints.length
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#0f172a] transition-colors font-sans">
@@ -86,23 +95,23 @@ const AdminDashboard = () => {
           </button>
         </div>
 
-        {/* STATS OVERVIEW */}
+        {/* STATS OVERVIEW - Uses calculated stats object */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <StatCard 
               label="Pending Action" 
-              count={complaints.filter(c => c.status !== 'resolved' && c.status !== 'rejected').length} 
+              count={stats.pending} 
               icon={<AlertCircle className="w-6 h-6 text-orange-500" />} 
               color="border-orange-500"
             />
             <StatCard 
               label="Resolved Cases" 
-              count={complaints.filter(c => c.status === 'resolved').length} 
+              count={stats.resolved} 
               icon={<CheckCircle className="w-6 h-6 text-green-500" />} 
               color="border-green-500"
             />
             <StatCard 
               label="Total Database" 
-              count={complaints.length} 
+              count={stats.total} 
               icon={<Clock className="w-6 h-6 text-blue-500" />} 
               color="border-blue-500"
             />
@@ -140,13 +149,14 @@ const AdminDashboard = () => {
                   <th className="px-6 py-4">Date</th>
                   <th className="px-6 py-4">Priority</th>
                   <th className="px-6 py-4">Status</th>
-                  <th className="px-6 py-4 text-right">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                {filteredComplaints.length === 0 ? (
+                {loading ? (
+                   <tr><td colSpan="5" className="px-6 py-12 text-center">Loading...</td></tr>
+                ) : filteredComplaints.length === 0 ? (
                   <tr>
-                    <td colSpan="6" className="px-6 py-12 text-center text-slate-400">
+                    <td colSpan="5" className="px-6 py-12 text-center text-slate-400">
                       No complaints found in this category.
                     </td>
                   </tr>
@@ -164,7 +174,7 @@ const AdminDashboard = () => {
                         <div className="text-xs text-slate-500 mt-0.5">{c.category}</div>
                       </td>
 
-                      {/* Citizen Name (Safe check using ?.) */}
+                      {/* Citizen Name */}
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
                            <div className="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-600 flex items-center justify-center text-xs font-bold">
@@ -208,13 +218,6 @@ const AdminDashboard = () => {
                           <option value="rejected">Rejected</option>
                         </select>
                       </td>
-
-                      {/* Actions */}
-                      <td className="px-6 py-4 text-right">
-                         <button className="text-primary-500 hover:text-primary-600 text-sm font-medium">
-                           View Details
-                         </button>
-                      </td>
                     </motion.tr>
                   ))
                 )}
@@ -227,7 +230,7 @@ const AdminDashboard = () => {
   );
 };
 
-// Updated StatCard
+// StatCard Component
 const StatCard = ({ label, count, icon, color }) => (
   <div className={`bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border-l-4 ${color}`}>
     <div className="flex items-center justify-between">

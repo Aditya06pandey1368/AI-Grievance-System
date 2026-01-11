@@ -1,6 +1,7 @@
 import User from '../models/User.model.js';
 import Officer from '../models/Officer.model.js';
 import AuditLog from '../models/AuditLog.model.js';
+import Department from '../models/Department.model.js';
 
 // @desc    Create a new Officer (User + Officer Profile)
 // @route   POST /api/admin/create-officer
@@ -64,18 +65,32 @@ export const getAllOfficers = async (req, res) => {
 // @desc    Delete a User (Officer)
 // @route   DELETE /api/admin/users/:id
 export const deleteUser = async (req, res) => {
-    try {
-        const user = await User.findById(req.params.id);
-        if(!user) return res.status(404).json({ message: "User not found" });
+  try {
+    const userId = req.params.id;
 
-        await User.deleteOne({ _id: req.params.id });
-        // Also cleanup Officer profile if it exists
-        await Officer.deleteOne({ user: req.params.id });
-
-        res.json({ success: true, message: "User deleted" });
-    } catch (error) {
-        res.status(500).json({ message: error.message });
+    // 1. Delete the User from the User Collection
+    const deletedUser = await User.findByIdAndDelete(userId);
+    
+    if (!deletedUser) {
+      return res.status(404).json({ success: false, message: "User not found" });
     }
+
+    // 2. CRITICAL STEP: Remove this user from any Department they are assigned to
+    // This finds any department where 'admin' is the deleted user's ID and removes that field.
+    await Department.updateMany(
+      { admin: userId }, 
+      { $unset: { admin: "" } } 
+    );
+
+    res.status(200).json({ 
+      success: true, 
+      message: "User deleted and removed from Department successfully" 
+    });
+
+  } catch (error) {
+    console.error("Delete Error:", error);
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
 };
 
 export const getAllUsers = async (req, res) => {

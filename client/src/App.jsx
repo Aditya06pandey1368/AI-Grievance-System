@@ -37,6 +37,7 @@ import SuperDashboard from "./pages/superAdmin/AdminDashboard";
 import DeptManagement from "./pages/superAdmin/DeptManagement";
 import AuditLogs from "./pages/superAdmin/AuditLogs";
 import AbuseControl from "./pages/superAdmin/AbuseControl";
+import UserManagement from "./pages/superAdmin/UserManagement";
 
 function App() {
   return (
@@ -85,6 +86,7 @@ function App() {
               <Route element={<DashboardLayout role="super_admin" />}>
                 <Route path="/super-admin/dashboard" element={<SuperDashboard />} />
                 <Route path="/super-admin/departments" element={<DeptManagement />} />
+                <Route path="/super-admin/user_management" element={<UserManagement />} />
                 <Route path="/super-admin/logs" element={<AuditLogs />} />
                 <Route path="/super-admin/abuse" element={<AbuseControl />} />
               </Route>

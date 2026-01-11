@@ -216,3 +216,22 @@ export const updateComplaintStatus = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+export const getAllComplaintsForAdmin = async (req, res) => {
+  try {
+    // 1. Fetch all complaints from DB
+    // 2. Populate 'citizen' to get the name of the person who filed it
+    // 3. Sort by newest first (-1)
+    const complaints = await Complaint.find()
+      .populate("citizen", "name email") 
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      data: complaints, 
+    });
+  } catch (error) {
+    console.error("Error fetching admin complaints:", error);
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
