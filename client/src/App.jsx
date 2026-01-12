@@ -75,7 +75,7 @@ function App() {
               <Route element={<DashboardLayout role="dept_admin" />}>
                 <Route path="/admin/dashboard" element={<DeptDashboard />} />
                 <Route path="/admin/officers" element={<OfficerManagement />} />
-                <Route path="/admin/officerslist" element={<OfficerList />} />
+                <Route path="/admin/officer-list" element={<OfficerList />} />
                 <Route path="/admin/sla" element={<SLATracker />} />
                 <Route path="/admin/fraud" element={<FraudMonitor />} />
               </Route>

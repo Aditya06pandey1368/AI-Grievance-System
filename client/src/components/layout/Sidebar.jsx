@@ -1,13 +1,14 @@
 import { NavLink } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  LayoutDashboard, 
-  FileText, 
-  Users, 
-  ShieldAlert, 
-  BarChart2, 
+import {
+  LayoutDashboard,
+  FileText,
+  Users,
+  ShieldAlert,
+  BarChart2,
   Settings,
-  LogOut 
+  LogOut,
+  ClipboardList
 } from "lucide-react";
 
 const Sidebar = ({ isOpen, role, onClose }) => {
@@ -23,11 +24,14 @@ const Sidebar = ({ isOpen, role, onClose }) => {
       { name: "Assigned Tasks", path: "/officer/tasks", icon: <FileText /> },
       { name: "Resolved", path: "/officer/resolved", icon: <ShieldAlert /> },
     ],
-    dept_admin: [
+    dept_admin : [
       { name: "Dept Overview", path: "/admin/dashboard", icon: <LayoutDashboard /> },
       { name: "Manage Officers", path: "/admin/officers", icon: <Users /> },
       { name: "SLA Tracker", path: "/admin/sla", icon: <BarChart2 /> },
+      { name: "Fraud Monitor", path: "/admin/fraud", icon: <ShieldAlert /> },
+      { name: "Officer List", path: "/admin/officer-list", icon: <ClipboardList /> },
     ],
+
     super_admin: [
       { name: "System Overview", path: "/super-admin/dashboard", icon: <LayoutDashboard /> },
       { name: "Departments", path: "/super-admin/departments", icon: <Settings /> },
@@ -43,12 +47,12 @@ const Sidebar = ({ isOpen, role, onClose }) => {
       {isOpen && (
         <>
           {/* Backdrop for Mobile */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 0.5 }} exit={{ opacity: 0 }}
             onClick={onClose}
             className="md:hidden fixed inset-0 bg-black z-40"
           />
-          
+
           {/* Sidebar */}
           <motion.aside
             initial={{ x: -250 }} animate={{ x: 0 }} exit={{ x: -250 }}
@@ -63,8 +67,8 @@ const Sidebar = ({ isOpen, role, onClose }) => {
                   onClick={onClose} // Close on mobile click
                   className={({ isActive }) => `
                     flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium
-                    ${isActive 
-                      ? "bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 shadow-sm" 
+                    ${isActive
+                      ? "bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 shadow-sm"
                       : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"}
                   `}
                 >
