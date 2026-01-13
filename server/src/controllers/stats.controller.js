@@ -1,43 +1,35 @@
 import Complaint from '../models/Complaint.model.js';
 import User from '../models/User.model.js';
+import Department from '../models/Department.model.js';
 
-// @desc    Get Dashboard Stats (Dynamic Monthly Data)
+// @desc    Get Dashboard Stats (Filtered by Department + Returns Dept Name)
 // @route   GET /api/stats/dashboard
 export const getDashboardStats = async (req, res) => {
   try {
-    // 1. Basic Counts
-    const totalComplaints = await Complaint.countDocuments();
-    const resolved = await Complaint.countDocuments({ status: 'resolved' });
-    const pending = await Complaint.countDocuments({ status: { $ne: 'resolved' } });
+    let matchStage = {}; 
+    let departmentName = "Department"; // Default Title
 
-    // 2. Breakdown by Department
-    const byDept = await Complaint.aggregate([
-      {
-        $lookup: {
-            from: 'departments',
-            localField: 'department',
-            foreignField: '_id',
-            as: 'deptInfo'
+    // 1. IF DEPT ADMIN: Find their department, filter complaints, and get Dept Name
+    if (req.user.role === 'dept_admin') {
+        const dept = await Department.findOne({ admin: req.user._id });
+        if (dept) {
+            matchStage = { department: dept._id };
+            departmentName = dept.name; // <--- Capture Name (e.g., "Electricity")
         }
-      },
-      {
-        $group: {
-          _id: "$department",
-          deptName: { $first: "$deptInfo.name" },
-          count: { $sum: 1 }
-        }
-      }
-    ]);
+    }
 
-    // 3. Fraud Stats
-    const fraudUsers = await User.countDocuments({ trustScore: { $lt: 40 } });
+    // 2. Get Counts
+    const totalComplaints = await Complaint.countDocuments(matchStage);
+    const resolved = await Complaint.countDocuments({ ...matchStage, status: 'resolved' });
+    const pending = await Complaint.countDocuments({ ...matchStage, status: { $ne: 'resolved' } });
 
-    // 4. Monthly Trends (Last 12 Months) - NEW LOGIC
+    // 3. Monthly Trends
     const monthlyStats = await Complaint.aggregate([
       {
         $match: {
+          ...matchStage,
           createdAt: { 
-            $gte: new Date(new Date().setFullYear(new Date().getFullYear() - 1)) // Filter last 1 year
+            $gte: new Date(new Date().setFullYear(new Date().getFullYear() - 1)) 
           }
         }
       },
@@ -53,35 +45,33 @@ export const getDashboardStats = async (req, res) => {
       { $sort: { "_id.year": 1, "_id.month": 1 } }
     ]);
 
-    // 5. Fill in missing months with 0 for the chart
+    // 4. Format Data
     const formattedMonthlyData = [];
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const today = new Date();
 
     for (let i = 11; i >= 0; i--) {
       const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
-      const monthIndex = d.getMonth(); // 0-11
+      const monthIndex = d.getMonth();
       const year = d.getFullYear();
       const monthName = months[monthIndex];
-
-      // Match MongoDB result (Month is 1-12) with loop
       const found = monthlyStats.find(item => item._id.month === (monthIndex + 1) && item._id.year === year);
       
-      formattedMonthlyData.push({
-        name: monthName,
-        complaints: found ? found.count : 0
-      });
+      formattedMonthlyData.push({ name: monthName, complaints: found ? found.count : 0 });
     }
+
+    // 5. Fraud Stats (Global - not tied to dept usually, or add matchStage if needed)
+    const fraudUsers = await User.countDocuments({ trustScore: { $lt: 40 } });
 
     res.json({
       success: true,
       data: {
+        departmentName, // <--- Sending this to Frontend
         totalComplaints,
         resolved,
         pending,
-        byDepartment: byDept,
         potentialFraudUsers: fraudUsers,
-        monthlyData: formattedMonthlyData // <--- Sending this to frontend
+        monthlyData: formattedMonthlyData
       }
     });
 
