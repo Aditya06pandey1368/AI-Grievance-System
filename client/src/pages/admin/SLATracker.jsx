@@ -1,54 +1,265 @@
 import { useEffect, useState } from "react";
-import { AlertTriangle } from "lucide-react";
+import { motion } from "framer-motion";
+import { 
+  AlertTriangle, 
+  Clock, 
+  ShieldAlert, 
+  CheckCircle, 
+  ArrowRight,
+  Siren,
+  MapPin // Added MapPin icon
+} from "lucide-react";
 import Navbar from "../../components/layout/Navbar";
 import api from "../../services/api";
-import { Table, TableHead, TableRow, TableCell } from "../../components/ui/Table"; // Use the Table component I gave earlier
+import { toast } from "react-hot-toast";
 
 const SLATracker = () => {
-  const [breaches, setBreaches] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState({ breached: [], atRisk: [], stats: { breachedCount: 0, riskCount: 0 } });
+  const [activeTab, setActiveTab] = useState('breached'); // 'breached' or 'risk'
 
   useEffect(() => {
-    // This is a mock filter. In real app, create a specific endpoint like /complaints/breached
-    api.get("/complaints/admin/all").then(res => {
-      const all = res.data.data || [];
-      setBreaches(all.filter(c => c.isBreached || c.priorityLevel === 'Critical'));
-    });
+    fetchSLAData();
   }, []);
 
-  return (
-    <div className="min-h-screen bg-slate-50 dark:bg-dark-bg">
-      <Navbar />
-      <div className="pt-24 px-6 max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold text-red-600 mb-2 flex items-center gap-2">
-          <AlertTriangle /> SLA Breaches & Critical Issues
-        </h1>
-        <p className="text-slate-500 mb-8">Complaints that have exceeded their resolution deadline.</p>
+  // Priority Score Map for Sorting
+  const priorityScore = {
+    'Critical': 4,
+    'High': 3,
+    'Medium': 2,
+    'Low': 1
+  };
 
-        <div className="bg-white dark:bg-slate-800 rounded-xl shadow border border-slate-200 dark:border-slate-700">
-          <Table>
-            <TableHead>
-              <th className="px-6 py-4">Complaint ID</th>
-              <th className="px-6 py-4">Title</th>
-              <th className="px-6 py-4">Deadline</th>
-              <th className="px-6 py-4">Assigned To</th>
-              <th className="px-6 py-4 text-right">Delay</th>
-            </TableHead>
-            <tbody>
-              {breaches.map(c => (
-                <TableRow key={c._id}>
-                  <TableCell className="font-mono text-xs">{c._id.slice(-6)}</TableCell>
-                  <TableCell className="font-bold">{c.title}</TableCell>
-                  <TableCell className="text-red-500">{new Date(c.deadline).toLocaleDateString()}</TableCell>
-                  <TableCell>{c.assignedOfficer || "Unassigned"}</TableCell>
-                  <TableCell className="text-right font-bold text-red-600">OVERDUE</TableCell>
-                </TableRow>
-              ))}
-            </tbody>
-          </Table>
+  const fetchSLAData = async () => {
+    try {
+      const res = await api.get("/sla/tracker");
+      if (res.data.success) {
+        const rawData = res.data.data;
+
+        // SORTING LOGIC: Priority (Desc) -> Time (Asc)
+        // Time Ascending means:
+        // - For breaches: Most negative hours (e.g. -50h) comes before (-2h) if we sort normally? 
+        //   Actually, we want "Most Overdue" first. -50 is smaller than -2.
+        //   So simple ascending sort works (smallest number first).
+        
+        const sortFn = (a, b) => {
+            // 1. Compare Priority
+            const pA = priorityScore[a.priority] || 0;
+            const pB = priorityScore[b.priority] || 0;
+            if (pB !== pA) return pB - pA; // Higher priority first
+
+            // 2. Compare Time (Ascending)
+            return parseFloat(a.hoursLeft) - parseFloat(b.hoursLeft);
+        };
+
+        const sortedBreached = rawData.breached.sort(sortFn);
+        const sortedAtRisk = rawData.atRisk.sort(sortFn);
+
+        setData({
+            breached: sortedBreached,
+            atRisk: sortedAtRisk,
+            stats: rawData.stats
+        });
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to sync SLA data");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const listToDisplay = activeTab === 'breached' ? data.breached : data.atRisk;
+
+  if (loading) return (
+    <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <div className="animate-spin w-12 h-12 border-4 border-red-500 border-t-transparent rounded-full"/>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-[#0f172a] text-white font-sans selection:bg-red-500/30">
+      <Navbar />
+      
+      {/* Background Glow */}
+      <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+        <div className={`absolute top-0 right-0 w-[500px] h-[500px] rounded-full blur-[120px] transition-colors duration-1000 ${activeTab === 'breached' ? 'bg-red-600/20' : 'bg-orange-500/20'}`} />
+      </div>
+
+      <div className="pt-28 px-6 max-w-7xl mx-auto pb-20 relative z-10">
+        
+        {/* Header */}
+        <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col md:flex-row justify-between items-end mb-12 gap-6"
+        >
+            <div>
+                <h1 className="text-4xl font-extrabold tracking-tight flex items-center gap-3">
+                    <ShieldAlert className="w-10 h-10 text-red-500" />
+                    SLA Command Center
+                </h1>
+                <p className="text-slate-400 mt-2 text-lg max-w-xl">
+                    Real-time monitoring of service level breaches and critical deadlines.
+                </p>
+            </div>
+            
+            {/* 3D Summary Cards */}
+            <div className="flex gap-4">
+                <Summary3DCard 
+                    label="Active Breaches" 
+                    count={data.stats.breachedCount} 
+                    color="red" 
+                    icon={<Siren className="w-6 h-6"/>}
+                    active={activeTab === 'breached'}
+                    onClick={() => setActiveTab('breached')}
+                />
+                <Summary3DCard 
+                    label="At Risk (<24h)" 
+                    count={data.stats.riskCount} 
+                    color="orange" 
+                    icon={<Clock className="w-6 h-6"/>}
+                    active={activeTab === 'risk'}
+                    onClick={() => setActiveTab('risk')}
+                />
+            </div>
+        </motion.div>
+
+        {/* List Section */}
+        <div className="space-y-4">
+            <div className="flex items-center justify-between mb-4 px-2">
+                <h2 className={`text-xl font-bold uppercase tracking-wider flex items-center gap-2 ${activeTab === 'breached' ? 'text-red-400' : 'text-orange-400'}`}>
+                    {activeTab === 'breached' ? 'Critical Violations' : 'Approaching Deadline'}
+                    <span className="bg-slate-800 text-white text-xs px-2 py-1 rounded-full">{listToDisplay.length}</span>
+                </h2>
+            </div>
+
+            {listToDisplay.length === 0 ? (
+                <div className="h-64 flex flex-col items-center justify-center border-2 border-dashed border-slate-700 rounded-3xl bg-slate-800/30">
+                    <CheckCircle className="w-16 h-16 text-green-500 mb-4" />
+                    <p className="text-slate-400 text-lg">All systems normal. No issues found.</p>
+                </div>
+            ) : (
+                listToDisplay.map((ticket, idx) => (
+                    <TicketRow key={ticket._id} ticket={ticket} index={idx} type={activeTab} />
+                ))
+            )}
         </div>
+
       </div>
     </div>
   );
+};
+
+// 3D Tilt Card for Header
+const Summary3DCard = ({ label, count, color, icon, active, onClick }) => {
+    const activeClass = active 
+        ? `ring-2 ring-${color}-500 bg-slate-800 scale-105` 
+        : `bg-slate-800/50 hover:bg-slate-800`;
+
+    return (
+        <motion.button
+            whileHover={{ y: -5 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={onClick}
+            className={`relative p-5 rounded-2xl border border-slate-700 transition-all duration-300 w-44 text-left group ${activeClass}`}
+        >
+            <div className={`absolute top-0 right-0 p-3 opacity-20 group-hover:opacity-100 transition-opacity text-${color}-500`}>
+                {icon}
+            </div>
+            <p className="text-slate-400 text-xs font-bold uppercase">{label}</p>
+            <p className={`text-4xl font-black mt-1 text-${color}-500`}>{count}</p>
+        </motion.button>
+    )
+};
+
+// Animated List Row
+const TicketRow = ({ ticket, index, type }) => {
+    const isBreached = type === 'breached';
+    
+    // Priority Badge Color Logic
+    const priorityColor = {
+        'Critical': 'bg-red-500/20 text-red-400 border-red-500/50',
+        'High': 'bg-orange-500/20 text-orange-400 border-orange-500/50',
+        'Medium': 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50',
+        'Low': 'bg-blue-500/20 text-blue-400 border-blue-500/50',
+    }[ticket.priority] || 'bg-slate-700 text-slate-300';
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: index * 0.05 }}
+            className={`group relative overflow-hidden bg-slate-800/40 border border-slate-700 hover:border-${isBreached ? 'red' : 'orange'}-500/50 rounded-2xl p-5 transition-all hover:bg-slate-800`}
+        >
+            {/* Status Bar */}
+            <div className={`absolute left-0 top-0 bottom-0 w-1 ${isBreached ? 'bg-red-600' : 'bg-orange-500'}`} />
+
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                
+                {/* Left: Info */}
+                <div className="flex items-start gap-4">
+                    <div className={`p-3 rounded-xl ${isBreached ? 'bg-red-500/10 text-red-500' : 'bg-orange-500/10 text-orange-500'}`}>
+                        {isBreached ? <AlertTriangle className="w-6 h-6" /> : <Clock className="w-6 h-6" />}
+                    </div>
+                    <div>
+                        <div className="flex items-center gap-3 mb-1">
+                            {/* PRIORITY BADGE */}
+                            <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold border ${priorityColor}`}>
+                                {ticket.priority}
+                            </span>
+                            <span className="text-slate-500 text-xs font-mono">ID: {ticket._id.slice(-6)}</span>
+                        </div>
+                        <h3 className="font-bold text-lg text-slate-100 group-hover:text-white transition-colors">
+                            {ticket.title}
+                        </h3>
+                        
+                        {/* Meta Data Row */}
+                        <div className="flex flex-wrap gap-4 text-sm text-slate-400 mt-2">
+                            <span className="flex items-center gap-1.5">
+                                <span className="w-2 h-2 rounded-full bg-slate-600"></span>
+                                {ticket.department}
+                            </span>
+                            
+                            {/* LOCATION ADDED HERE */}
+                            <span className="flex items-center gap-1.5 text-slate-300">
+                                <MapPin className="w-3.5 h-3.5" />
+                                {ticket.location}
+                            </span>
+
+                            <span className="flex items-center gap-1.5">
+                                <span className="w-2 h-2 rounded-full bg-slate-600"></span>
+                                Officer: {ticket.assignedTo}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Right: Metrics */}
+                <div className="flex items-center gap-6 pl-14 md:pl-0">
+                    <div className="text-right hidden sm:block">
+                        <p className="text-xs text-slate-500 uppercase font-bold">Deadline</p>
+                        <p className="text-slate-300 font-mono text-sm">
+                            {new Date(ticket.deadline).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit'})}
+                        </p>
+                    </div>
+                    
+                    <div className={`text-right w-32 ${isBreached ? 'text-red-500' : 'text-orange-400'}`}>
+                        <p className="text-xs font-bold uppercase opacity-80">
+                            {isBreached ? 'Overdue By' : 'Time Left'}
+                        </p>
+                        <p className="text-2xl font-black font-mono">
+                            {Math.abs(ticket.hoursLeft)}h
+                        </p>
+                    </div>
+
+                    <button className="p-2 rounded-full bg-slate-700 hover:bg-slate-600 transition-colors">
+                        <ArrowRight className="w-5 h-5 text-slate-300" />
+                    </button>
+                </div>
+            </div>
+        </motion.div>
+    );
 };
 
 export default SLATracker;

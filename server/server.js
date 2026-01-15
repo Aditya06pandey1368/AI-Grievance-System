@@ -14,6 +14,7 @@ import complaintRoutes from './src/routes/complaint.routes.js';
 import departmentRoutes from './src/routes/department.routes.js';
 import adminRoutes from './src/routes/admin.routes.js';
 import statsRoutes from './src/routes/stats.routes.js';
+import slaRoutes from './src/routes/sla.routes.js'
 
 dotenv.config();
 connectDB();
@@ -35,6 +36,7 @@ app.use('/api/complaints', complaintRoutes);
 app.use('/api/departments', departmentRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/stats', statsRoutes);
+app.use('/api/sla', slaRoutes);
 
 app.get('/', (req, res) => {
   res.send('Grievance AI API is running...');
