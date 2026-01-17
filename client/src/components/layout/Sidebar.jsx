@@ -8,7 +8,8 @@ import {
   BarChart2,
   Settings,
   LogOut,
-  ClipboardList
+  ClipboardList,
+  EyeOff
 } from "lucide-react";
 
 const Sidebar = ({ isOpen, role, onClose }) => {
@@ -28,7 +29,6 @@ const Sidebar = ({ isOpen, role, onClose }) => {
       { name: "Dept Overview", path: "/admin/dashboard", icon: <LayoutDashboard /> },
       { name: "Manage Officers", path: "/admin/officers", icon: <Users /> },
       { name: "SLA Tracker", path: "/admin/sla", icon: <BarChart2 /> },
-      { name: "Fraud Monitor", path: "/admin/fraud", icon: <ShieldAlert /> },
       { name: "Officer List", path: "/admin/officer-list", icon: <ClipboardList /> },
     ],
 
@@ -36,6 +36,7 @@ const Sidebar = ({ isOpen, role, onClose }) => {
       { name: "System Overview", path: "/super-admin/dashboard", icon: <LayoutDashboard /> },
       { name: "Departments", path: "/super-admin/departments", icon: <Settings /> },
       { name: "User Management", path: "/super-admin/user_management", icon: <Users /> },
+      { name: "Fraud Monitor", path: "/super-admin/fraud", icon: <EyeOff /> },
       { name: "Audit Logs", path: "/super-admin/logs", icon: <ShieldAlert /> },
     ]
   };

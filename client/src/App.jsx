@@ -28,7 +28,6 @@ import ComplaintAction from "./pages/officer/ComplaintAction";
 import DeptDashboard from "./pages/admin/DeptDashboard";
 import OfficerManagement from "./pages/admin/OfficerManagement";
 import SLATracker from "./pages/admin/SLATracker";
-import FraudMonitor from "./pages/admin/FraudMonitor";
 import OfficerList from "./pages/admin/OfficerList";
 
 // --- SUPER ADMIN PAGES ---
@@ -36,8 +35,8 @@ import OfficerList from "./pages/admin/OfficerList";
 import SuperDashboard from "./pages/superAdmin/AdminDashboard"; 
 import DeptManagement from "./pages/superAdmin/DeptManagement";
 import AuditLogs from "./pages/superAdmin/AuditLogs";
-import AbuseControl from "./pages/superAdmin/AbuseControl";
 import UserManagement from "./pages/superAdmin/UserManagement";
+import FraudMonitor from "./pages/superAdmin/FraudMonitor";
 
 function App() {
   return (
@@ -77,7 +76,6 @@ function App() {
                 <Route path="/admin/officers" element={<OfficerManagement />} />
                 <Route path="/admin/officer-list" element={<OfficerList />} />
                 <Route path="/admin/sla" element={<SLATracker />} />
-                <Route path="/admin/fraud" element={<FraudMonitor />} />
               </Route>
             </Route>
 
@@ -88,7 +86,7 @@ function App() {
                 <Route path="/super-admin/departments" element={<DeptManagement />} />
                 <Route path="/super-admin/user_management" element={<UserManagement />} />
                 <Route path="/super-admin/logs" element={<AuditLogs />} />
-                <Route path="/super-admin/abuse" element={<AbuseControl />} />
+                <Route path="/super-admin/fraud" element={<FraudMonitor />} />
               </Route>
             </Route>
 
