@@ -35,7 +35,7 @@ const Sidebar = ({ isOpen, role, onClose }) => {
     super_admin: [
       { name: "System Overview", path: "/super-admin/dashboard", icon: <LayoutDashboard /> },
       { name: "Departments", path: "/super-admin/departments", icon: <Settings /> },
-      { name: "User Management", path: "/super-admin/user_management", icon: <Users /> },
+      { name: "Dept Management", path: "/super-admin/user_management", icon: <Users /> },
       { name: "Fraud Monitor", path: "/super-admin/fraud", icon: <EyeOff /> },
       { name: "Audit Logs", path: "/super-admin/logs", icon: <ShieldAlert /> },
     ]
