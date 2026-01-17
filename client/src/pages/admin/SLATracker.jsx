@@ -244,9 +244,7 @@ const TicketRow = ({ ticket, index, type }) => {
                         </p>
                     </div>
 
-                    <button className="p-2 rounded-full bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">
-                        <ArrowRight className="w-5 h-5 text-slate-600 dark:text-slate-300" />
-                    </button>
+                    
                 </div>
             </div>
         </motion.div>

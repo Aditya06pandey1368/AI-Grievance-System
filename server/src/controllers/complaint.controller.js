@@ -1,4 +1,4 @@
-import axios from 'axios'; // <--- NEW: To talk to Python AI
+import axios from 'axios';
 import Complaint from '../models/Complaint.model.js';
 import User from '../models/User.model.js';
 import AuditLog from '../models/AuditLog.model.js';
@@ -16,44 +16,38 @@ export const createComplaint = async (req, res) => {
       return res.status(400).json({ success: false, message: "Zone is required." });
     }
 
-    // --- 1. CALL PYTHON AI SERVICE (Real Logic) ---
+    // --- 1. CALL PYTHON AI SERVICE ---
     let aiCategory = 'Other';
     let aiPriorityLevel = 'Medium';
     let aiPriorityScore = 50;
     let aiConfidence = 0;
 
     try {
-        // Send description to your running Python Service
         const aiResponse = await axios.post('http://localhost:8000/predict', {
             text: description
         });
 
         const data = aiResponse.data;
-        console.log("🤖 AI Response:", data); // Debugging
+        console.log("🤖 AI Response:", data);
 
-        // Update variables with REAL AI data
-        aiCategory = data.category;             // e.g. "Fire", "Road"
-        aiPriorityLevel = data.priority_level;  // e.g. "Critical"
-        aiPriorityScore = data.priority_score;  // e.g. 95
+        aiCategory = data.category;          
+        aiPriorityLevel = data.priority_level; 
+        aiPriorityScore = data.priority_score; 
         aiConfidence = data.ai_confidence;
 
     } catch (aiError) {
         console.error("⚠️ AI Service Error:", aiError.message);
         console.log("Using Default Fallback values.");
-        // If Python is down, it defaults to 'Other' / 'Medium' so the app doesn't crash.
     }
 
     // --- 2. DYNAMIC DEPARTMENT LOOKUP ---
-    // NO HARDCODED IDs! 
-    // We search the DB for a Department that matches the AI Category.
-    // e.g., If AI says "Fire", we look for a Dept named "Fire Dept" or code "DEPT_FIRE"
     let targetDeptId = null;
     let matchedDeptName = 'Unassigned';
 
     if (aiCategory !== 'Other') {
         const matchedDept = await Department.findOne({
             $or: [
-                { name: { $regex: aiCategory, $options: 'i' } }, // Matches "Fire Department" if category is "Fire"
+                { name: { $regex: aiCategory, $options: 'i' } },
                 { code: { $regex: aiCategory, $options: 'i' } }
             ]
         });
@@ -61,21 +55,14 @@ export const createComplaint = async (req, res) => {
         if (matchedDept) {
             targetDeptId = matchedDept._id;
             matchedDeptName = matchedDept.name;
-            console.log(`✅ Routing: Category "${aiCategory}" -> Department "${matchedDept.name}"`);
-        } else {
-            console.log(`⚠️ Routing: No Department found in DB matching "${aiCategory}"`);
         }
     }
 
     // --- 3. AUTO-ASSIGNMENT LOGIC ---
-    // Find Officer who matches:
-    // 1. The Zone (e.g., "Ward 1")
-    // 2. The Department (e.g., "Fire Dept") - IF a department was identified
     let assignedOfficerId = null;
     let complaintStatus = 'submitted';
 
     let officerQuery = { jurisdictionZones: { $in: [zone] } };
-    
     if (targetDeptId) {
         officerQuery.department = targetDeptId;
     }
@@ -85,9 +72,6 @@ export const createComplaint = async (req, res) => {
     if (responsibleOfficer) {
         assignedOfficerId = responsibleOfficer.user._id;
         complaintStatus = 'assigned';
-        console.log(`✅ Auto-Assigned to Officer: ${responsibleOfficer.user.email}`);
-    } else {
-        console.log(`❌ No Officer found for Zone "${zone}" & Dept "${matchedDeptName}"`);
     }
 
     // --- 4. CREATE COMPLAINT ---
@@ -97,8 +81,6 @@ export const createComplaint = async (req, res) => {
       location,
       zone, 
       citizen: userId,
-      
-      // AI DATA
       category: aiCategory,
       priorityLevel: aiPriorityLevel,
       priorityScore: aiPriorityScore,
@@ -106,11 +88,9 @@ export const createComplaint = async (req, res) => {
         confidence: aiConfidence,
         summary: `AI classified as ${aiCategory}`
       },
-      
       assignedOfficer: assignedOfficerId,
       department: targetDeptId, 
       status: complaintStatus, 
-
       history: [{
         action: 'SUBMITTED',
         performedBy: userId,
@@ -133,7 +113,6 @@ export const getMyHistory = async (req, res) => {
   try {
     let query = { citizen: req.user._id };
     
-    // If Officer: Show complaints assigned to them
     if (req.user.role === 'officer') {
         query = { assignedOfficer: req.user._id };
     }
@@ -177,14 +156,12 @@ export const updateComplaintStatus = async (req, res) => {
     const oldStatus = complaint.status;
     complaint.status = status;
 
-    // History Log
     complaint.history.push({
       action: `STATUS_CHANGE: ${oldStatus} -> ${status}`,
       performedBy: officerId,
       remarks: remarks || 'Status updated by officer'
     });
 
-    // Trust Score Logic
     if (status === 'rejected') {
       const citizen = await User.findById(complaint.citizen._id);
       if (citizen) {
@@ -202,7 +179,6 @@ export const updateComplaintStatus = async (req, res) => {
       }
     }
 
-    // Officer Stats Logic
     if (status === 'resolved' && oldStatus !== 'resolved') {
         await Officer.findOneAndUpdate(
             { user: officerId },
@@ -217,21 +193,71 @@ export const updateComplaintStatus = async (req, res) => {
   }
 };
 
-export const getAllComplaintsForAdmin = async (req, res) => {
+// @desc    Reclassify (Human in the Loop)
+export const reclassifyComplaint = async (req, res) => {
   try {
-    // 1. Fetch all complaints from DB
-    // 2. Populate 'citizen' to get the name of the person who filed it
-    // 3. Sort by newest first (-1)
-    const complaints = await Complaint.find()
-      .populate("citizen", "name email") 
+    const { id } = req.params;
+    const { departmentId, priority, notes } = req.body;
+
+    const complaint = await Complaint.findById(id);
+    if (!complaint) return res.status(404).json({ success: false, message: "Complaint not found" });
+
+    const oldDeptId = complaint.department;
+    const oldPriority = complaint.priority;
+
+    if (departmentId) complaint.department = departmentId;
+    if (priority) complaint.priorityLevel = priority; // Corrected field name to match schema (priorityLevel vs priority)
+    // NOTE: If your schema uses 'priority' instead of 'priorityLevel', change it back. 
+    // Based on createComplaint above, schema uses 'priorityLevel'.
+    if (priority) complaint.priorityLevel = priority; // Keeping this if you have a duplicate field or mixed usage
+
+    await complaint.save();
+
+    await AuditLog.create({
+        action: 'MANUAL_RECLASSIFICATION',
+        actor: req.user._id,
+        targetId: complaint._id,
+        details: `Reclassified: Dept ${oldDeptId}->${departmentId || oldDeptId}, Priority ${oldPriority}->${priority || oldPriority}. Note: ${notes}`
+    });
+
+    res.status(200).json({ 
+        success: true, 
+        message: "Complaint reclassified successfully",
+        data: complaint 
+    });
+
+  } catch (error) {
+    console.error("Reclassify Error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Get All Complaints (Dashboard)
+export const getAllComplaints = async (req, res) => {
+  try {
+    let filter = {};
+
+    // 1. Dept Admin: See complaints for their department
+    if (req.user.role === 'dept_admin') {
+       const dept = await Department.findOne({ admin: req.user._id });
+       if (dept) filter.department = dept._id;
+    }
+
+    // 2. Officer: See complaints for their department (or just assigned to them)
+    // Adjust logic here if you want them to see *everything* in their dept or just *their* tickets
+    if (req.user.role === 'officer') {
+       const officer = await Officer.findOne({ user: req.user._id });
+       if (officer) filter.department = officer.department; 
+    }
+
+    const complaints = await Complaint.find(filter)
+      .populate('citizen', 'name email')
+      .populate('department', 'name')
+      .populate('assignedOfficer', 'name')
       .sort({ createdAt: -1 });
 
-    res.status(200).json({
-      success: true,
-      data: complaints, 
-    });
+    res.status(200).json({ success: true, data: complaints });
   } catch (error) {
-    console.error("Error fetching admin complaints:", error);
-    res.status(500).json({ success: false, message: "Server Error" });
+    res.status(500).json({ success: false, message: error.message });
   }
 };

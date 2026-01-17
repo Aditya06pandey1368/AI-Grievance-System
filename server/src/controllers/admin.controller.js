@@ -165,3 +165,16 @@ export const getAllAuditLogs = async (req, res) => {
     res.status(500).json({ success: false, message: "Server Error" });
   }
 };
+
+export const getAllDepartments = async (req, res) => {
+  try {
+    // FIX: Removed { isActive: true } because your schema doesn't have that field.
+    // We just fetch ALL departments.
+    const departments = await Department.find({}).select('name _id');
+    
+    res.status(200).json({ success: true, data: departments });
+  } catch (error) {
+    console.error("Fetch Depts Error:", error);
+    res.status(500).json({ success: false, message: "Failed to load departments" });
+  }
+};
