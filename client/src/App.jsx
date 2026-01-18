@@ -31,7 +31,6 @@ import SLATracker from "./pages/admin/SLATracker";
 import OfficerList from "./pages/admin/OfficerList";
 
 // --- SUPER ADMIN PAGES ---
-// FIX: Imported 'AdminDashboard' instead of 'SuperDashboard' to match your file structure
 import SuperDashboard from "./pages/superAdmin/AdminDashboard"; 
 import DeptManagement from "./pages/superAdmin/DeptManagement";
 import AuditLogs from "./pages/superAdmin/AuditLogs";
@@ -52,12 +51,15 @@ function App() {
             <Route path="/register" element={<Register />} />
             <Route path="/unauthorized" element={<Unauthorized />} />
 
-            {/* --- CITIZEN ROUTES --- */}
+            {/* --- CITIZEN ROUTES (Fixed) --- */}
             <Route element={<ProtectedRoute allowedRoles={['citizen']} />}>
-               <Route path="/dashboard" element={<Dashboard />} />
-               <Route path="/submit-complaint" element={<SubmitComplaint />} />
-               <Route path="/my-complaints" element={<MyComplaints />} />
-               <Route path="/complaint/:id" element={<ComplaintDetail />} />
+               {/* ADDED: DashboardLayout wrapper so Sidebar appears */}
+               <Route element={<DashboardLayout role="citizen" />}>
+                  <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/submit-complaint" element={<SubmitComplaint />} />
+                  <Route path="/my-complaints" element={<MyComplaints />} />
+                  <Route path="/complaint/:id" element={<ComplaintDetail />} />
+               </Route>
             </Route>
 
             {/* --- OFFICER ROUTES --- */}
