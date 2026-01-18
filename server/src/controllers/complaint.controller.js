@@ -144,24 +144,41 @@ export const getComplaintById = async (req, res) => {
 };
 
 // @desc    Update Status
+// ... (imports remain the same: axios, Complaint, User, AuditLog, Officer, Department)
+
+// @desc    Update Status & Log to Audit Trail
 export const updateComplaintStatus = async (req, res) => {
   try {
     const { status, remarks } = req.body;
     const complaintId = req.params.id;
     const officerId = req.user._id;
 
+    // 1. Find Complaint
     const complaint = await Complaint.findById(complaintId).populate('citizen');
     if (!complaint) return res.status(404).json({ message: 'Complaint not found' });
 
     const oldStatus = complaint.status;
+    
+    // 2. Update Status
     complaint.status = status;
 
+    // 3. Internal History (Complaint Timeline)
     complaint.history.push({
       action: `STATUS_CHANGE: ${oldStatus} -> ${status}`,
       performedBy: officerId,
       remarks: remarks || 'Status updated by officer'
     });
 
+    // 4. --- NEW: Add Global Audit Log ---
+    await AuditLog.create({
+        action: 'STATUS_UPDATE',
+        actor: officerId,
+        targetId: complaint._id,
+        // Shows Complaint ID and the specific change
+        details: `Status changed for Complaint :: ${complaint.title} (${complaint._id}) : ${oldStatus} -> ${status}`
+    });
+
+    // 5. Trust Score Logic (If rejected)
     if (status === 'rejected') {
       const citizen = await User.findById(complaint.citizen._id);
       if (citizen) {
@@ -171,7 +188,7 @@ export const updateComplaintStatus = async (req, res) => {
             await AuditLog.create({
                 action: 'USER_BANNED',
                 targetId: citizen._id,
-                details: 'Auto-ban due to low trust score',
+                details: `Auto-ban due to low trust score. Triggered by rejection of Complaint ::  ${complaint.title} (${complaint._id})`,
                 actor: officerId
             });
           }
@@ -179,6 +196,7 @@ export const updateComplaintStatus = async (req, res) => {
       }
     }
 
+    // 6. Officer Stats Logic
     if (status === 'resolved' && oldStatus !== 'resolved') {
         await Officer.findOneAndUpdate(
             { user: officerId },
@@ -193,36 +211,65 @@ export const updateComplaintStatus = async (req, res) => {
   }
 };
 
-// @desc    Reclassify (Human in the Loop)
+// @desc    Reclassify (Human in the Loop) - With Names & IDs
 export const reclassifyComplaint = async (req, res) => {
   try {
     const { id } = req.params;
-    const { departmentId, priority, notes } = req.body;
+    const { departmentId, priority } = req.body;
 
-    const complaint = await Complaint.findById(id);
+    // 1. Find Complaint & Populate Department to get the OLD Name
+    const complaint = await Complaint.findById(id).populate('department');
     if (!complaint) return res.status(404).json({ success: false, message: "Complaint not found" });
 
-    const oldDeptId = complaint.department;
-    const oldPriority = complaint.priority;
+    // 2. Capture Old Values
+    const oldDeptObj = complaint.department;
+    const oldDeptId = oldDeptObj ? oldDeptObj._id.toString() : 'N/A';
+    const oldDeptName = oldDeptObj ? oldDeptObj.name : 'Unassigned';
+    
+    const oldPriority = complaint.priorityLevel || 'Low'; 
 
-    if (departmentId) complaint.department = departmentId;
-    if (priority) complaint.priorityLevel = priority; // Corrected field name to match schema (priorityLevel vs priority)
-    // NOTE: If your schema uses 'priority' instead of 'priorityLevel', change it back. 
-    // Based on createComplaint above, schema uses 'priorityLevel'.
-    if (priority) complaint.priorityLevel = priority; // Keeping this if you have a duplicate field or mixed usage
+    let isChanged = false;
 
-    await complaint.save();
+    // --- LOGIC 1: Handle Department Change ---
+    if (departmentId && departmentId !== oldDeptId) {
+        // Fetch NEW Department to get its Name
+        const newDeptObj = await Department.findById(departmentId);
+        const newDeptName = newDeptObj ? newDeptObj.name : 'Unknown Dept';
 
-    await AuditLog.create({
-        action: 'MANUAL_RECLASSIFICATION',
-        actor: req.user._id,
-        targetId: complaint._id,
-        details: `Reclassified: Dept ${oldDeptId}->${departmentId || oldDeptId}, Priority ${oldPriority}->${priority || oldPriority}. Note: ${notes}`
-    });
+        complaint.department = departmentId;
+        isChanged = true;
+
+        await AuditLog.create({
+            action: 'DEPT_REASSIGNMENT',
+            actor: req.user._id,
+            targetId: complaint._id,
+            // Format: Complaint ID | DeptID(Name) -> DeptID(Name)
+            details: `Reassigned Complaint :: ${complaint.title} (${complaint._id})   :  ${oldDeptName} (${oldDeptId})   ->  ${newDeptName} (${departmentId})  `
+        });
+    }
+
+    // --- LOGIC 2: Handle Priority Change ---
+    if (priority && priority !== oldPriority) {
+        complaint.priorityLevel = priority;
+        isChanged = true;
+
+        await AuditLog.create({
+            action: 'PRIORITY_UPDATE',
+            actor: req.user._id,
+            targetId: complaint._id,
+            // Format: Complaint ID | Old -> New
+            details: `Priority updated for Complaint :: ${complaint.title} (${complaint._id}) :  ${oldPriority}  ->  ${priority}`
+        });
+    }
+
+    // 3. Save
+    if (isChanged) {
+        await complaint.save();
+    }
 
     res.status(200).json({ 
         success: true, 
-        message: "Complaint reclassified successfully",
+        message: "Complaint updated successfully",
         data: complaint 
     });
 
@@ -242,7 +289,6 @@ export const getAllComplaints = async (req, res) => {
        const dept = await Department.findOne({ admin: req.user._id });
        if (dept) filter.department = dept._id;
     }
-
     // 2. Officer: See complaints for their department (or just assigned to them)
     // Adjust logic here if you want them to see *everything* in their dept or just *their* tickets
     if (req.user.role === 'officer') {

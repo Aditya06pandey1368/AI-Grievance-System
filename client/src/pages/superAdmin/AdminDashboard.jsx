@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { 
   CheckCircle, 
   Clock, 
   AlertCircle, 
   RefreshCcw, 
-  Building2,
   BarChart3,
-  Filter
+  Filter,
+  Building2,
+  X,
+  AlertTriangle
 } from "lucide-react";
 import Navbar from "../../components/layout/Navbar";
 import api from "../../services/api";
@@ -15,25 +17,25 @@ import { toast } from "react-hot-toast";
 
 const AdminDashboard = () => {
   const [complaints, setComplaints] = useState([]);
-  const [departments, setDepartments] = useState([]); // Store departments for dropdown
+  const [departments, setDepartments] = useState([]); 
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
+
+  // --- CONFIRMATION MODAL STATE ---
+  const [pendingAction, setPendingAction] = useState(null); // { id, type, value, label }
 
   // --- 1. INITIAL DATA FETCHING ---
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      // Parallel fetch: Get Complaints AND Departments
       const [complaintsRes, deptsRes] = await Promise.all([
         api.get('/complaints/admin/all'),
-        api.get('/admin/departments') // Ensure this endpoint exists in your department.routes
+        api.get('/admin/departments')
       ]);
 
-      // Handle Complaints Data
       const cData = complaintsRes.data.data || complaintsRes.data || [];
       setComplaints(Array.isArray(cData) ? cData : []);
 
-      // Handle Departments Data
       const dData = deptsRes.data.data || deptsRes.data || [];
       setDepartments(Array.isArray(dData) ? dData : []);
 
@@ -49,16 +51,40 @@ const AdminDashboard = () => {
     fetchDashboardData();
   }, []);
 
-  // --- 2. UNIVERSAL UPDATE HANDLER ---
-  const handleUpdate = async (id, type, value) => {
-    // 1. Create Optimistic Backup
-    const originalComplaints = [...complaints];
+  // --- 2. INITIATE CHANGE (Opens Modal) ---
+  const initiateChange = (id, type, value, currentLabel) => {
+    let newValueLabel = value;
+    
+    // Find readable name for department ID if needed
+    if (type === 'department') {
+        const dept = departments.find(d => d._id === value);
+        newValueLabel = dept ? dept.name : 'Unknown Dept';
+    }
 
-    // 2. Optimistic UI Update
+    setPendingAction({
+        id,
+        type,
+        value,
+        label: newValueLabel,
+        currentLabel
+    });
+  };
+
+  // --- 3. EXECUTE UPDATE (Called on "Yes") ---
+  const executeUpdate = async () => {
+    if (!pendingAction) return;
+    const { id, type, value } = pendingAction;
+
+    // Close Modal
+    setPendingAction(null);
+
+    // 1. Optimistic Update
+    const originalComplaints = [...complaints];
     setComplaints(prev => prev.map(c => {
       if (c._id === id) {
         if (type === 'status') return { ...c, status: value };
-        if (type === 'priority') return { ...c, priority: value }; // standardized to 'priority'
+        // FIX: Update 'priorityLevel' in local state (matches DB Schema)
+        if (type === 'priority') return { ...c, priorityLevel: value }; 
         if (type === 'department') {
             const newDept = departments.find(d => d._id === value);
             return { ...c, department: newDept || c.department };
@@ -69,15 +95,13 @@ const AdminDashboard = () => {
 
     try {
       if (type === 'status') {
-        // Call Status Endpoint
         await api.patch(`/complaints/${id}/status`, { status: value });
-        toast.success(`Status updated to ${value}`);
+        toast.success(`Status updated successfully`);
       } else {
-        // Call Reclassify Endpoint (For Priority & Department)
-        // This handles "Human in the Loop" logic & Audit Logs
+        // FIX: Backend expects 'priority' in body, mapped to 'priorityLevel' in DB
         const payload = type === 'priority' ? { priority: value } : { departmentId: value };
         await api.put(`/complaints/${id}/reclassify`, payload);
-        toast.success(`${type === 'priority' ? 'Priority' : 'Department'} updated successfully`);
+        toast.success(`Reclassified successfully`);
       }
     } catch (error) {
       console.error("Update failed", error);
@@ -86,16 +110,17 @@ const AdminDashboard = () => {
     }
   };
 
-  // --- 3. FILTER LOGIC ---
+  // --- 4. FILTER LOGIC ---
   const filteredComplaints = complaints.filter(c => {
     if (filter === 'all') return true;
     if (filter === 'resolved') return c.status === 'resolved';
     if (filter === 'pending') return c.status !== 'resolved' && c.status !== 'rejected';
-    if (filter === 'critical') return c.priority === 'Critical';
+    // FIX: Check 'priorityLevel'
+    if (filter === 'critical') return c.priorityLevel === 'Critical'; 
     return true;
   });
 
-  // --- 4. DYNAMIC STATS ---
+  // --- 5. STATS ---
   const stats = {
     pending: complaints.filter(c => c.status !== 'resolved' && c.status !== 'rejected').length,
     resolved: complaints.filter(c => c.status === 'resolved').length,
@@ -103,9 +128,52 @@ const AdminDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#0f172a] transition-colors font-sans text-slate-900 dark:text-slate-100">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#0f172a] transition-colors font-sans text-slate-900 dark:text-slate-100 relative">
       <Navbar />
       
+      {/* --- CONFIRMATION MODAL --- */}
+      <AnimatePresence>
+        {pendingAction && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                <motion.div 
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.9, opacity: 0 }}
+                    className="bg-white dark:bg-slate-800 w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden"
+                >
+                    <div className="p-6 text-center">
+                        <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <AlertTriangle className="w-6 h-6 text-orange-600 dark:text-orange-400" />
+                        </div>
+                        <h3 className="text-xl font-bold mb-2">Confirm Change?</h3>
+                        <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">
+                            Are you sure you want to change the 
+                            <span className="font-bold text-slate-800 dark:text-white uppercase mx-1">{pendingAction.type}</span> 
+                            to <span className="font-bold text-primary-600 dark:text-primary-400">"{pendingAction.label}"</span>?
+                            <br/>
+                            <span className="text-xs opacity-75 mt-1 block">This action will be recorded in audit logs.</span>
+                        </p>
+                        
+                        <div className="flex gap-3">
+                            <button 
+                                onClick={() => setPendingAction(null)}
+                                className="flex-1 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition"
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                onClick={executeUpdate}
+                                className="flex-1 py-2.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold hover:opacity-90 transition shadow-lg"
+                            >
+                                Confirm Update
+                            </button>
+                        </div>
+                    </div>
+                </motion.div>
+            </div>
+        )}
+      </AnimatePresence>
+
       <div className="pt-24 px-6 max-w-7xl mx-auto pb-12">
         
         {/* HEADER */}
@@ -228,11 +296,13 @@ const AdminDashboard = () => {
                         <div className="relative">
                             <select 
                                 value={c.department?._id || c.department} 
-                                onChange={(e) => handleUpdate(c._id, 'department', e.target.value)}
-                                className="w-40 pl-9 pr-8 py-2 rounded-lg text-xs font-bold appearance-none bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer transition-all hover:bg-slate-200 dark:hover:bg-slate-800"
+                                onChange={(e) => initiateChange(c._id, 'department', e.target.value, c.department?.name || 'Current')}
+                                className="w-40 pl-9 pr-8 py-2 rounded-lg text-xs font-bold appearance-none bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer transition-all hover:bg-slate-200 dark:hover:bg-slate-800"
                             >
                                 {departments.map(d => (
-                                    <option key={d._id} value={d._id}>{d.name}</option>
+                                    <option key={d._id} value={d._id} className="dark:bg-slate-800">
+                                        {d.name}
+                                    </option>
                                 ))}
                             </select>
                             <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
@@ -242,19 +312,19 @@ const AdminDashboard = () => {
                       {/* 3. Priority Dropdown (Re-classification) */}
                       <td className="px-6 py-4">
                         <select 
-                          value={c.priority || 'Low'}
-                          onChange={(e) => handleUpdate(c._id, 'priority', e.target.value)}
-                          className={`appearance-none pl-4 pr-8 py-1.5 rounded-full text-xs font-bold cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-1 dark:focus:ring-offset-slate-800 transition-all text-center w-32
-                            ${(c.priority === 'Critical') ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 border border-red-200 dark:border-red-800' : ''}
-                            ${(c.priority === 'High') ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300 border border-orange-200 dark:border-orange-800' : ''}
-                            ${(c.priority === 'Medium') ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300 border border-yellow-200 dark:border-yellow-800' : ''}
-                            ${(!c.priority || c.priority === 'Low') ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800' : ''}
+                          value={c.priorityLevel || 'Low'}
+                          onChange={(e) => initiateChange(c._id, 'priority', e.target.value, c.priorityLevel || 'Low')}
+                          className={`appearance-none pl-4 pr-8 py-1.5 rounded-full text-xs font-bold cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-1 dark:focus:ring-offset-slate-800 transition-all text-center w-32 dark:text-white
+                            ${(c.priorityLevel === 'Critical') ? 'bg-red-100 text-red-700 dark:bg-red-600 dark:text-white border border-red-200 dark:border-red-500' : ''}
+                            ${(c.priorityLevel === 'High') ? 'bg-orange-100 text-orange-700 dark:bg-orange-600 dark:text-white border border-orange-200 dark:border-orange-500' : ''}
+                            ${(c.priorityLevel === 'Medium') ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-600 dark:text-white border border-yellow-200 dark:border-yellow-500' : ''}
+                            ${(!c.priorityLevel || c.priorityLevel === 'Low') ? 'bg-blue-100 text-blue-700 dark:bg-blue-600 dark:text-white border border-blue-200 dark:border-blue-500' : ''}
                           `}
                         >
-                          <option value="Critical">Critical</option>
-                          <option value="High">High</option>
-                          <option value="Medium">Medium</option>
-                          <option value="Low">Low</option>
+                          <option value="Critical" className="dark:bg-slate-800 text-slate-900 dark:text-white">Critical</option>
+                          <option value="High" className="dark:bg-slate-800 text-slate-900 dark:text-white">High</option>
+                          <option value="Medium" className="dark:bg-slate-800 text-slate-900 dark:text-white">Medium</option>
+                          <option value="Low" className="dark:bg-slate-800 text-slate-900 dark:text-white">Low</option>
                         </select>
                       </td>
 
@@ -262,17 +332,17 @@ const AdminDashboard = () => {
                       <td className="px-6 py-4">
                         <select 
                           value={c.status}
-                          onChange={(e) => handleUpdate(c._id, 'status', e.target.value)}
+                          onChange={(e) => initiateChange(c._id, 'status', e.target.value, c.status)}
                           className={`appearance-none pl-3 pr-8 py-1.5 rounded-lg text-xs font-bold cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors border w-32
-                            ${c.status === 'resolved' ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800' : 
-                              c.status === 'rejected' ? 'bg-red-50 text-red-600 border-red-200 dark:bg-red-900/20 dark:border-red-800' :
+                            ${c.status === 'resolved' ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/40 dark:text-green-300 dark:border-green-800' : 
+                              c.status === 'rejected' ? 'bg-red-50 text-red-600 border-red-200 dark:bg-red-900/40 dark:text-red-300 dark:border-red-800' :
                               'bg-white text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-600'}
                           `}
                         >
-                          <option value="submitted">Submitted</option>
-                          <option value="in_progress">In Progress</option>
-                          <option value="resolved">Resolved</option>
-                          <option value="rejected">Rejected</option>
+                          <option value="submitted" className="dark:bg-slate-800 text-slate-900 dark:text-white">Submitted</option>
+                          <option value="in_progress" className="dark:bg-slate-800 text-slate-900 dark:text-white">In Progress</option>
+                          <option value="resolved" className="dark:bg-slate-800 text-slate-900 dark:text-white">Resolved</option>
+                          <option value="rejected" className="dark:bg-slate-800 text-slate-900 dark:text-white">Rejected</option>
                         </select>
                       </td>
                     </motion.tr>

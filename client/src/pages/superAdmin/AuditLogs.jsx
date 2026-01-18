@@ -174,11 +174,9 @@ const AuditLogs = () => {
                                 {log.actor?.name ? log.actor.name.charAt(0) : <User className="w-3 h-3"/>}
                               </div>
                               <span className="font-medium text-slate-500 dark:text-slate-300">
-                                {log.actor?.name || "System/Unknown"}
+                                {`${log.actor?.name} (${log.actor?._id})` || "System/Unknown"}
                               </span>
                             </div>
-                            <div className="hidden sm:block w-1 h-1 bg-slate-300 rounded-full"></div>
-                            <span className="font-mono opacity-75">IP: {log.ipAddress || "::1"}</span>
                           </div>
                         </div>
                       </div>
