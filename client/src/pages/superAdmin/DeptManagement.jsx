@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
-import { Building2, Plus, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Building2, Plus, CheckCircle, AlertTriangle, X } from "lucide-react";
 import Navbar from "../../components/layout/Navbar";
 import Input from "../../components/ui/Input";
 import Button from "../../components/ui/Button";
@@ -7,111 +8,120 @@ import api from "../../services/api";
 import { toast } from "react-hot-toast";
 
 const DeptManagement = () => {
-  const [departments, setDepartments] = useState([]);
   const [formData, setFormData] = useState({
     name: "", code: "", defaultSLAHours: 48,
-    adminName: "", adminEmail: "", adminPassword: "" // New Fields
+    adminName: "", adminEmail: "", adminPassword: "" 
   });
   const [loading, setLoading] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
-  // 1. Fetch Departments on Load
-  useEffect(() => {
-    fetchDepartments();
-  }, []);
+  // Check if form is valid
+  const isValid = Object.values(formData).every(val => val !== "" && val !== 0);
 
-  const fetchDepartments = async () => {
-    try {
-      const res = await api.get("/departments");
-      setDepartments(res.data.data);
-    } catch (error) {
-      console.error("Failed to load departments");
-    }
+  const handlePreSubmit = (e) => {
+    e.preventDefault();
+    if (!isValid) return;
+    setShowConfirm(true);
   };
 
-  // 2. Handle Create Department
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const createDepartment = async () => {
+    setShowConfirm(false);
     setLoading(true);
     try {
       await api.post("/departments", formData);
-      toast.success("Department & Admin created!");
-      // Reset all fields
+      toast.success("Department & Admin created successfully!");
       setFormData({ name: "", code: "", defaultSLAHours: 48, adminName: "", adminEmail: "", adminPassword: "" });
-      fetchDepartments();
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed");
+      toast.error(error.response?.data?.message || "Failed to create department");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-dark-bg transition-colors duration-300">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#0f172a] transition-colors duration-300 font-sans">
       <Navbar />
 
-      <div className="pt-24 px-4 max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
+      {/* CONFIRMATION MODAL */}
+      <AnimatePresence>
+        {showConfirm && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                <motion.div 
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.9, opacity: 0 }}
+                    className="bg-white dark:bg-slate-800 w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden"
+                >
+                    <div className="p-6 text-center">
+                        <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <Building2 className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <h3 className="text-xl font-bold text-slate-900 dark:text-white">Create New Department?</h3>
+                        <p className="text-slate-500 dark:text-slate-400 mt-2">
+                            This will create a new system entity <strong>{formData.name}</strong> and assign <strong>{formData.adminName}</strong> as the administrator.
+                        </p>
+                        
+                        <div className="flex gap-3 mt-6">
+                            <button onClick={() => setShowConfirm(false)} className="flex-1 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition">
+                                Cancel
+                            </button>
+                            <button onClick={createDepartment} className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 shadow-lg shadow-blue-500/30 transition">
+                                Yes, Create
+                            </button>
+                        </div>
+                    </div>
+                </motion.div>
+            </div>
+        )}
+      </AnimatePresence>
 
-        {/* --- LEFT COLUMN: CREATE FORM --- */}
-        <div className="md:col-span-1">
-          <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700">
-            <h2 className="text-xl font-bold mb-4 text-slate-900 dark:text-white flex items-center gap-2">
-              <Plus className="w-5 h-5 text-primary-500" /> Add Department
-            </h2>
+      <div className="pt-24 px-4 max-w-2xl mx-auto">
+        <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-xl border border-slate-200 dark:border-slate-700"
+        >
+            <div className="mb-8">
+                <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white flex items-center gap-3">
+                    <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
+                        <Plus className="w-6 h-6 text-indigo-600 dark:text-indigo-400" /> 
+                    </div>
+                    Register New Department
+                </h2>
+                <p className="text-slate-500 dark:text-slate-400 mt-1 ml-12">
+                    Define a new grievance category and assign an administrator.
+                </p>
+            </div>
 
-            <form onSubmit={handleSubmit} className="space-y-3">
-              <h3 className="font-semibold text-slate-700 dark:text-slate-300 border-b pb-2">Department Details</h3>
-              <Input label="Dept Name" placeholder="e.g. Fire Safety" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
-              <Input label="Dept Code" placeholder="e.g. DEPT_FIRE" value={formData.code} onChange={e => setFormData({ ...formData, code: e.target.value.toUpperCase() })} />
-              <Input label="SLA (Hours)" type="number" value={formData.defaultSLAHours} onChange={e => setFormData({ ...formData, defaultSLAHours: e.target.value })} />
+            <form onSubmit={handlePreSubmit} className="space-y-6">
+                <div className="space-y-4">
+                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Department Info</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <Input label="Department Name" placeholder="e.g. Fire Safety" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
+                        <Input label="Dept Code" placeholder="e.g. FIRE_DEPT" value={formData.code} onChange={e => setFormData({ ...formData, code: e.target.value.toUpperCase() })} />
+                    </div>
+                    <Input label="Default SLA (Hours)" type="number" value={formData.defaultSLAHours} onChange={e => setFormData({ ...formData, defaultSLAHours: e.target.value })} />
+                </div>
 
-              <h3 className="font-semibold text-slate-700 dark:text-slate-300 border-b pb-2 pt-2">Assign Admin</h3>
-              <Input label="Admin Name" placeholder="e.g. Chief Fire Officer" value={formData.adminName} onChange={e => setFormData({ ...formData, adminName: e.target.value })} />
-              <Input label="Admin Email" type="email" value={formData.adminEmail} onChange={e => setFormData({ ...formData, adminEmail: e.target.value })} />
-              <Input label="Password" type="password" value={formData.adminPassword} onChange={e => setFormData({ ...formData, adminPassword: e.target.value })} />
+                <div className="border-t border-slate-200 dark:border-slate-700 my-6"></div>
 
-              <Button isLoading={loading} className="w-full mt-4">Create Department & Admin</Button>
+                <div className="space-y-4">
+                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Administrator Credentials</h3>
+                    <Input label="Admin Name" placeholder="Full Name" value={formData.adminName} onChange={e => setFormData({ ...formData, adminName: e.target.value })} />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <Input label="Email Address" type="email" placeholder="admin@dept.com" value={formData.adminEmail} onChange={e => setFormData({ ...formData, adminEmail: e.target.value })} />
+                        <Input label="Password" type="password" placeholder="••••••••" value={formData.adminPassword} onChange={e => setFormData({ ...formData, adminPassword: e.target.value })} />
+                    </div>
+                </div>
+
+                <Button 
+                    disabled={!isValid} 
+                    className={`w-full py-4 text-lg shadow-xl ${!isValid ? 'opacity-50 cursor-not-allowed' : 'shadow-indigo-500/20'}`}
+                >
+                    Create System Department
+                </Button>
             </form>
-          </div>
-        </div>
-
-        {/* --- RIGHT COLUMN: EXISTING LIST --- */}
-        <div className="md:col-span-2">
-          <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700">
-            <h2 className="text-xl font-bold mb-6 text-slate-900 dark:text-white flex items-center gap-2">
-              <Building2 className="w-5 h-5 text-blue-500" /> Existing Departments
-            </h2>
-
-            {departments.length === 0 ? (
-              <div className="text-center py-10 text-slate-500 dark:text-slate-400">
-                No departments found. Create one to get started.
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {departments.map((dept) => (
-                  <div key={dept._id} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-slate-100 dark:border-slate-700 hover:border-primary-500 transition-colors">
-                    <div>
-                      <h3 className="font-semibold text-slate-900 dark:text-white">{dept.name}</h3>
-                      <div className="text-sm text-slate-500 dark:text-slate-400 flex gap-4 mt-1">
-                        <span className="bg-slate-200 dark:bg-slate-600 px-2 py-0.5 rounded text-xs font-mono">
-                          ID: {dept._id}
-                        </span>
-                        <span className="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded text-xs font-bold">
-                          {dept.code}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Only show delete if you implement delete API later */}
-                    <div className="text-slate-400 text-sm">
-                      {dept.defaultSLAHours}h SLA
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
+        </motion.div>
       </div>
     </div>
   );

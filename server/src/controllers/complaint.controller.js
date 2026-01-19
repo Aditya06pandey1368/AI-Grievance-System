@@ -40,47 +40,56 @@ export const createComplaint = async (req, res) => {
         console.log("Using Default Fallback values.");
     }
 
-    // --- 2. DYNAMIC DEPARTMENT LOOKUP ---
+    // --- 2. STRICT VALIDATION LOGIC ---
     let targetDeptId = null;
     let matchedDeptName = 'Unassigned';
+    let assignedOfficerId = null;
+    let complaintStatus = 'submitted'; // Default state
 
+    // A. Verify if the AI Category exists as a Department in YOUR database
     if (aiCategory !== 'Other') {
         const matchedDept = await Department.findOne({
             $or: [
-                { name: { $regex: aiCategory, $options: 'i' } },
-                { code: { $regex: aiCategory, $options: 'i' } }
+                { name: { $regex: `^${aiCategory}$`, $options: 'i' } }, // Exact match
+                { code: { $regex: `^${aiCategory}$`, $options: 'i' } }
             ]
         });
 
         if (matchedDept) {
+            // Department Exists -> Keep AI Category
             targetDeptId = matchedDept._id;
             matchedDeptName = matchedDept.name;
+        } else {
+            // Department DOES NOT Exist -> Override to 'Other'
+            console.log(`⚠️ Dept '${aiCategory}' not found in DB. Falling back to 'Other'.`);
+            aiCategory = 'Other';
         }
     }
 
-    // --- 3. AUTO-ASSIGNMENT LOGIC ---
-    let assignedOfficerId = null;
-    let complaintStatus = 'submitted';
-
-    let officerQuery = { jurisdictionZones: { $in: [zone] } };
+    // B. Only attempt assignment if we have a valid Department
     if (targetDeptId) {
-        officerQuery.department = targetDeptId;
+        // Find an officer who matches BOTH Zone AND Department
+        const responsibleOfficer = await Officer.findOne({ 
+            jurisdictionZones: { $in: [zone] },
+            department: targetDeptId
+        }).populate('user');
+
+        if (responsibleOfficer) {
+            assignedOfficerId = responsibleOfficer.user._id;
+            complaintStatus = 'assigned';
+        } else {
+            console.log(`⚠️ No Officer found for Zone: ${zone} in Dept: ${matchedDeptName}`);
+        }
     }
 
-    const responsibleOfficer = await Officer.findOne(officerQuery).populate('user');
-
-    if (responsibleOfficer) {
-        assignedOfficerId = responsibleOfficer.user._id;
-        complaintStatus = 'assigned';
-    }
-
-    // --- 4. CREATE COMPLAINT ---
+    // --- 3. CREATE COMPLAINT (Images Removed) ---
     const complaint = await Complaint.create({
       title,
       description,
       location,
       zone, 
       citizen: userId,
+      
       category: aiCategory,
       priorityLevel: aiPriorityLevel,
       priorityScore: aiPriorityScore,
@@ -95,8 +104,8 @@ export const createComplaint = async (req, res) => {
         action: 'SUBMITTED',
         performedBy: userId,
         remarks: assignedOfficerId 
-          ? `Auto-assigned to ${responsibleOfficer.user.name} (${matchedDeptName})` 
-          : 'Submitted (Waiting for assignment)'
+          ? `Auto-assigned to ${matchedDeptName} Officer` 
+          : `Submitted. Categorized as ${aiCategory}. (Pending Assignment)`
       }]
     });
 
@@ -143,9 +152,6 @@ export const getComplaintById = async (req, res) => {
     }
 };
 
-// @desc    Update Status
-// ... (imports remain the same: axios, Complaint, User, AuditLog, Officer, Department)
-
 // @desc    Update Status & Log to Audit Trail
 export const updateComplaintStatus = async (req, res) => {
   try {
@@ -169,12 +175,11 @@ export const updateComplaintStatus = async (req, res) => {
       remarks: remarks || 'Status updated by officer'
     });
 
-    // 4. --- NEW: Add Global Audit Log ---
+    // 4. Add Global Audit Log
     await AuditLog.create({
         action: 'STATUS_UPDATE',
         actor: officerId,
         targetId: complaint._id,
-        // Shows Complaint ID and the specific change
         details: `Status changed for Complaint :: ${complaint.title} (${complaint._id}) : ${oldStatus} -> ${status}`
     });
 
@@ -243,8 +248,7 @@ export const reclassifyComplaint = async (req, res) => {
             action: 'DEPT_REASSIGNMENT',
             actor: req.user._id,
             targetId: complaint._id,
-            // Format: Complaint ID | DeptID(Name) -> DeptID(Name)
-            details: `Reassigned Complaint :: ${complaint.title} (${complaint._id})   :  ${oldDeptName} (${oldDeptId})   ->  ${newDeptName} (${departmentId})  `
+            details: `Reassigned Complaint :: ${complaint.title} (${complaint._id})   :  ${oldDeptName} (${oldDeptId})   ->   ${newDeptName} (${departmentId})  `
         });
     }
 
@@ -257,7 +261,6 @@ export const reclassifyComplaint = async (req, res) => {
             action: 'PRIORITY_UPDATE',
             actor: req.user._id,
             targetId: complaint._id,
-            // Format: Complaint ID | Old -> New
             details: `Priority updated for Complaint :: ${complaint.title} (${complaint._id}) :  ${oldPriority}  ->  ${priority}`
         });
     }
@@ -284,23 +287,51 @@ export const getAllComplaints = async (req, res) => {
   try {
     let filter = {};
 
-    // 1. Dept Admin: See complaints for their department
+    // Role Filtering
     if (req.user.role === 'dept_admin') {
        const dept = await Department.findOne({ admin: req.user._id });
        if (dept) filter.department = dept._id;
     }
-    // 2. Officer: See complaints for their department (or just assigned to them)
-    // Adjust logic here if you want them to see *everything* in their dept or just *their* tickets
     if (req.user.role === 'officer') {
        const officer = await Officer.findOne({ user: req.user._id });
        if (officer) filter.department = officer.department; 
     }
 
-    const complaints = await Complaint.find(filter)
+    // 1. Fetch ALL matching documents first
+    let complaints = await Complaint.find(filter)
       .populate('citizen', 'name email')
       .populate('department', 'name')
-      .populate('assignedOfficer', 'name')
-      .sort({ createdAt: -1 });
+      .populate('assignedOfficer', 'name');
+
+    // 2. APPLY CUSTOM SORTING (JavaScript)
+    // Goal: Date (Desc) -> Status (Unresolved First) -> Priority (Critical First)
+    complaints.sort((a, b) => {
+        // A. Primary Sort: Date (Desc - Newest First)
+        const dateA = new Date(a.createdAt);
+        const dateB = new Date(b.createdAt);
+        
+        // If dates are different days, newer day wins
+        // If same day, we continue to secondary sort
+        if (dateA.toDateString() !== dateB.toDateString()) {
+            return dateB - dateA; 
+        }
+
+        // B. Secondary Sort: Status (Unresolved comes before Resolved)
+        // Define "Resolved" types
+        const isResolvedA = ['resolved', 'rejected', 'closed'].includes(a.status);
+        const isResolvedB = ['resolved', 'rejected', 'closed'].includes(b.status);
+
+        if (isResolvedA !== isResolvedB) {
+            return isResolvedA ? 1 : -1; // Unresolved (false) comes first
+        }
+
+        // C. Tertiary Sort: Priority (Critical > High > Medium > Low)
+        const priorityMap = { 'Critical': 4, 'High': 3, 'Medium': 2, 'Low': 1 };
+        const scoreA = priorityMap[a.priorityLevel] || 0;
+        const scoreB = priorityMap[b.priorityLevel] || 0;
+
+        return scoreB - scoreA; // Higher score first
+    });
 
     res.status(200).json({ success: true, data: complaints });
   } catch (error) {

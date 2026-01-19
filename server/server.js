@@ -2,9 +2,10 @@ import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import path from 'path';
+import fs from 'fs'; // Import FS to check if folder exists
 import { fileURLToPath } from 'url';
 
-// 1. FIX IMPORTS (Add './src/' prefix)
+// 1. Imports
 import connectDB from './src/config/db.js';
 import startCronJobs from './src/services/cron.service.js';
 
@@ -18,19 +19,38 @@ import slaRoutes from './src/routes/sla.routes.js'
 
 dotenv.config();
 connectDB();
-startCronJobs();
+// startCronJobs(); // You can uncomment this when needed
 
 const app = express();
 
+// 2. Middleware
 app.use(express.json());
-app.use(cors());
+app.use(cors({
+    origin: ["http://localhost:5173", "http://localhost:3000"], // Allow your frontend
+    credentials: true
+}));
 
-// 2. FIX STATIC FOLDER PATH
+// 3. FIX STATIC FOLDER PATH (With Debugging)
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-// Since server.js is at root, 'uploads' is in the same directory, not up (..)
-app.use('/uploads', express.static(path.join(__dirname, 'uploads'))); 
 
+// Construct the absolute path to the uploads folder
+const uploadsPath = path.join(__dirname, 'uploads');
+
+// --- DEBUG LOG: Check this in your terminal! ---
+console.log("📂 Serving static files from:", uploadsPath);
+
+// Check if folder exists
+if (!fs.existsSync(uploadsPath)){
+    console.error("⚠️  WARNING: 'uploads' directory does not exist. Creating it...");
+    fs.mkdirSync(uploadsPath);
+}
+
+// Mount the static folder
+// This means: http://localhost:5000/uploads/image.jpg -> server/uploads/image.jpg
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// 4. API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/complaints', complaintRoutes);
 app.use('/api/departments', departmentRoutes);

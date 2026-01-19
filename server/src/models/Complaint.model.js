@@ -3,7 +3,8 @@ import mongoose from 'mongoose';
 const complaintSchema = new mongoose.Schema({
   title: { type: String, required: true, trim: true },
   description: { type: String, required: true },
-  images: [{ type: String }],
+  
+  // REMOVED: images: [{ type: String }],
   
   citizen: { 
     type: mongoose.Schema.Types.ObjectId, 
@@ -17,11 +18,9 @@ const complaintSchema = new mongoose.Schema({
     type: String, 
     required: true,
     default: 'Other',
-    // Using a broad list to prevent validation errors if AI guesses something new
     enum: ['Road', 'Electricity', 'Water', 'Police', 'Medical', 'Fire', 'Other', 'General'] 
   },
   
-  // Optional: If you link specific departments later
   department: { type: mongoose.Schema.Types.ObjectId, ref: 'Department' },
 
   // --- PRIORITY (0-100 Scale) ---
@@ -32,7 +31,7 @@ const complaintSchema = new mongoose.Schema({
     default: 'Medium' 
   },
 
-  // --- AI ANALYSIS DATA (New) ---
+  // --- AI ANALYSIS DATA ---
   aiAnalysis: {
     confidence: Number,
     summary: String
@@ -40,10 +39,9 @@ const complaintSchema = new mongoose.Schema({
 
   // --- LOCATION & ROUTING ---
   location: { type: String, required: true }, 
-  zone: { type: String, required: true }, // e.g., "Ward-1"
+  zone: { type: String, required: true }, 
   
   // --- ASSIGNMENT ---
-  // CHANGED: Refers to 'User' so it works with the seed script users easily
   assignedOfficer: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 
   // --- STATUS & SLA ---

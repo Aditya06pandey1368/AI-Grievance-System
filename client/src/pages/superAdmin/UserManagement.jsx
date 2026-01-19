@@ -1,191 +1,212 @@
 import { useState, useEffect } from "react";
-import { Users, Trash2, AlertTriangle } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Building2, Trash2, Edit2, AlertTriangle, Users, FileText, ShieldAlert } from "lucide-react";
 import Navbar from "../../components/layout/Navbar";
 import api from "../../services/api";
 import { toast } from "react-hot-toast";
+import Input from "../../components/ui/Input";
 
 const UserManagement = () => {
-  const [users, setUsers] = useState([]);
+  const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  // Modal State for Delete Confirmation
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [userToDelete, setUserToDelete] = useState(null);
+  // Modals State
+  const [deleteModal, setDeleteModal] = useState({ show: false, dept: null });
+  const [editModal, setEditModal] = useState({ show: false, dept: null });
+  const [editForm, setEditForm] = useState({});
 
-  // 1. Fetch Users
-  const fetchUsers = async () => {
+  const fetchDepartments = async () => {
     try {
       setLoading(true);
-      const { data } = await api.get("/admin/users");
-      
-      if(data.success) {
-        // Robust Filtering for 'admin' role (case-insensitive)
-        const adminsOnly = data.data.filter(user => 
-            user.role && 
-            user.role.toLowerCase() === 'dept_admin'
-        );
-        setUsers(adminsOnly);
-      }
+      const { data } = await api.get("/departments");
+      if(data.success) setDepartments(data.data);
     } catch (error) {
-      console.error("Failed to load users", error);
-      toast.error("Failed to load users");
+      toast.error("Failed to load departments");
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
+  useEffect(() => { fetchDepartments(); }, []);
 
-  // 2. Open Delete Modal
-  const confirmDelete = (user) => {
-    setUserToDelete(user);
-    setShowDeleteModal(true);
+  // --- DELETE LOGIC ---
+  const handleDelete = async () => {
+    try {
+      await api.delete(`/departments/${deleteModal.dept._id}`);
+      toast.success("Department permanently deleted");
+      setDepartments(departments.filter(d => d._id !== deleteModal.dept._id));
+      setDeleteModal({ show: false, dept: null });
+    } catch (error) {
+      toast.error("Delete failed");
+    }
   };
 
-  // 3. Perform Delete Action
-  const handleDelete = async () => {
-    if (!userToDelete) return;
-    
+  // --- EDIT LOGIC ---
+  const openEdit = (dept) => {
+    setEditForm({
+        name: dept.name,
+        code: dept.code,
+        defaultSLAHours: dept.defaultSLAHours,
+        adminName: dept.admin?.name || "",
+        adminEmail: dept.admin?.email || "",
+        adminPassword: "" // Blank by default
+    });
+    setEditModal({ show: true, dept });
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
     try {
-      await api.delete(`/admin/users/${userToDelete._id}`);
-      toast.success("Admin deleted successfully");
-      
-      // Update UI immediately
-      setUsers(users.filter(u => u._id !== userToDelete._id));
-      setShowDeleteModal(false);
-      setUserToDelete(null);
+        await api.put(`/departments/${editModal.dept._id}`, editForm);
+        toast.success("Department updated");
+        setEditModal({ show: false, dept: null });
+        fetchDepartments(); // Refresh data
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to delete admin");
+        toast.error("Update failed");
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-dark-bg transition-colors duration-300 font-sans">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#0f172a] transition-colors duration-300 font-sans">
       <Navbar />
 
-      <div className="pt-24 px-6 max-w-6xl mx-auto">
-        
-        {/* --- HEADER SECTION --- */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
-              <Users className="w-8 h-8 text-primary-500" /> 
-              Admin Management
-            </h1>
-            <p className="text-slate-500 dark:text-slate-400 mt-1 ml-11">
-              Manage department administrators and their access.
-            </p>
-          </div>
-          
-          <div className="bg-white dark:bg-slate-800 px-6 py-3 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex items-center gap-3">
-             <div className="w-10 h-10 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center text-primary-600 dark:text-primary-400 font-bold">
-                {users.length}
-             </div>
-             <div>
-                <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Active Admins</p>
-                <p className="text-xs text-slate-400">System Wide</p>
-             </div>
-          </div>
-        </div>
-
-        {/* --- USERS LIST (Styled like DeptManagement) --- */}
-        <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700">
-          <h2 className="text-xl font-bold mb-6 text-slate-900 dark:text-white flex items-center gap-2">
-            <Users className="w-5 h-5 text-blue-500" /> Registered Admins
-          </h2>
-
-          {loading ? (
-             <div className="text-center py-12 text-slate-500">Loading admins...</div>
-          ) : users.length === 0 ? (
-             <div className="text-center py-12 text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-dashed border-slate-300 dark:border-slate-700">
-               <Users className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-               <p>No admins found. Create a department to add an admin.</p>
-             </div>
-          ) : (
-            <div className="space-y-3">
-              {users.map((user) => (
-                <div key={user._id} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-slate-100 dark:border-slate-700 hover:border-primary-500 transition-colors group">
-                  
-                  {/* Left Side: User Info */}
-                  <div className="flex items-center gap-4">
-                     <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-600 flex items-center justify-center text-slate-600 dark:text-slate-300 font-bold">
-                        {user.name.charAt(0).toUpperCase()}
-                     </div>
-                     <div>
-                        <h3 className="font-semibold text-slate-900 dark:text-white">{user.name}</h3>
-                        <div className="text-sm text-slate-500 dark:text-slate-400 flex gap-2 items-center mt-0.5">
-                          <span>{user.email}</span>
-                          <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-600" />
-                          <span className="bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide">
-                            {user.role}
-                          </span>
+      {/* --- 1. DELETE MODAL --- */}
+      <AnimatePresence>
+        {deleteModal.show && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-white dark:bg-slate-800 w-full max-w-md rounded-2xl p-6 border-2 border-red-500 shadow-2xl">
+                    <div className="text-center">
+                        <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+                        <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Permanent Delete?</h3>
+                        <p className="text-slate-500 mt-2 text-sm">
+                            You are about to delete <strong>{deleteModal.dept.name}</strong>.
+                            <br/><br/>
+                            <span className="text-red-500 font-bold">WARNING:</span> This will permanently erase:
+                        </p>
+                        <ul className="text-left text-sm text-slate-600 dark:text-slate-300 mt-4 space-y-2 bg-red-50 dark:bg-red-900/20 p-4 rounded-xl">
+                            <li>• The Department Entry</li>
+                            <li>• The Admin User Account</li>
+                            <li>• All Associated Officers</li>
+                            <li>• All Complaint Records</li>
+                        </ul>
+                        <div className="flex gap-3 mt-6">
+                            <button onClick={() => setDeleteModal({ show: false, dept: null })} className="flex-1 py-2 rounded-xl border border-slate-300 dark:border-slate-600 font-bold dark:text-white">Cancel</button>
+                            <button onClick={handleDelete} className="flex-1 py-2 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700 shadow-lg">Confirm Delete</button>
                         </div>
-                     </div>
-                  </div>
-
-                  {/* Right Side: Actions */}
-                  <div className="flex items-center gap-4">
-                    <div className="hidden md:block text-slate-400 text-xs text-right">
-                       <p>Joined</p>
-                       <p>{new Date(user.createdAt).toLocaleDateString()}</p>
                     </div>
-                    
-                    <button 
-                      onClick={() => confirmDelete(user)}
-                      className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
-                      title="Delete Admin"
+                </motion.div>
+            </div>
+        )}
+      </AnimatePresence>
+
+      {/* --- 2. EDIT MODAL --- */}
+      <AnimatePresence>
+        {editModal.show && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                <motion.div initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 50, opacity: 0 }} className="bg-white dark:bg-slate-800 w-full max-w-lg rounded-2xl p-6 shadow-2xl border border-slate-200 dark:border-slate-700 max-h-[90vh] overflow-y-auto">
+                    <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                        <Edit2 className="w-5 h-5 text-indigo-500" /> Edit Department
+                    </h3>
+                    <form onSubmit={handleEditSubmit} className="space-y-4">
+                        <Input label="Name" value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} />
+                        <Input label="Code" value={editForm.code} onChange={e => setEditForm({...editForm, code: e.target.value})} />
+                        <Input label="SLA (Hours)" type="number" value={editForm.defaultSLAHours} onChange={e => setEditForm({...editForm, defaultSLAHours: e.target.value})} />
+                        
+                        <div className="border-t border-slate-200 dark:border-slate-700 pt-4 mt-4">
+                            <h4 className="text-sm font-bold text-slate-400 uppercase mb-3">Admin Details</h4>
+                            <Input label="Admin Name" value={editForm.adminName} onChange={e => setEditForm({...editForm, adminName: e.target.value})} />
+                            <Input label="Admin Email" value={editForm.adminEmail} onChange={e => setEditForm({...editForm, adminEmail: e.target.value})} />
+                            <Input label="New Password (Leave blank to keep)" type="password" value={editForm.adminPassword} onChange={e => setEditForm({...editForm, adminPassword: e.target.value})} />
+                        </div>
+
+                        <div className="flex gap-3 pt-4">
+                            <button type="button" onClick={() => setEditModal({ show: false, dept: null })} className="flex-1 py-3 rounded-xl border font-bold dark:text-white">Cancel</button>
+                            <button className="flex-1 py-3 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-700">Save Changes</button>
+                        </div>
+                    </form>
+                </motion.div>
+            </div>
+        )}
+      </AnimatePresence>
+
+      <div className="pt-24 px-6 max-w-7xl mx-auto pb-12">
+        <div className="flex items-center gap-3 mb-8">
+            <ShieldAlert className="w-8 h-8 text-indigo-500" />
+            <div>
+                <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Department Management</h1>
+                <p className="text-slate-500 dark:text-slate-400">Overview of active departments and resource allocation</p>
+            </div>
+        </div>
+
+        {loading ? (
+            <div className="text-center py-20 text-slate-500">Loading Departments...</div>
+        ) : departments.length === 0 ? (
+            <div className="text-center py-20 bg-white dark:bg-slate-800 rounded-3xl border-2 border-dashed border-slate-300 dark:border-slate-700">
+                <p className="text-lg font-medium text-slate-500">No departments found.</p>
+            </div>
+        ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {departments.map((dept) => (
+                    <motion.div 
+                        key={dept._id}
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-lg border border-slate-100 dark:border-slate-700 hover:shadow-2xl hover:border-indigo-500/30 transition-all duration-300 group relative"
                     >
-                      <Trash2 className="w-5 h-5" />
-                    </button>
-                  </div>
-                </div>
-              ))}
+                        {/* Header */}
+                        <div className="flex justify-between items-start mb-4">
+                            <div>
+                                <h3 className="text-xl font-bold text-slate-900 dark:text-white">{dept.name}</h3>
+                                <span className="inline-block bg-slate-100 dark:bg-slate-700 text-slate-500 px-2 py-0.5 rounded text-xs font-mono mt-1">
+                                    {dept.code}
+                                </span>
+                            </div>
+                            <div className="p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl text-indigo-600 dark:text-indigo-400">
+                                <Building2 className="w-6 h-6" />
+                            </div>
+                        </div>
+
+                        {/* Admin Info */}
+                        <div className="bg-slate-50 dark:bg-slate-900/50 rounded-xl p-3 mb-4 border border-slate-100 dark:border-slate-700">
+                            <p className="text-xs text-slate-400 uppercase font-bold mb-1">Administrator</p>
+                            <p className="font-semibold text-slate-800 dark:text-slate-200">{dept.admin?.name || "Unassigned"}</p>
+                            <p className="text-xs text-slate-500 truncate">{dept.admin?.email}</p>
+                        </div>
+
+                        {/* Stats Grid */}
+                        <div className="grid grid-cols-2 gap-3 mb-6">
+                            <div className="bg-blue-50 dark:bg-blue-900/10 p-3 rounded-xl text-center">
+                                <Users className="w-5 h-5 text-blue-500 mx-auto mb-1" />
+                                <p className="text-lg font-bold text-slate-900 dark:text-white">{dept.officerCount || 0}</p>
+                                <p className="text-xs text-slate-500">Officers</p>
+                            </div>
+                            <div className="bg-orange-50 dark:bg-orange-900/10 p-3 rounded-xl text-center">
+                                <FileText className="w-5 h-5 text-orange-500 mx-auto mb-1" />
+                                <p className="text-lg font-bold text-slate-900 dark:text-white">{dept.complaintCount || 0}</p>
+                                <p className="text-xs text-slate-500">Active Cases</p>
+                            </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex gap-3 pt-4 border-t border-slate-100 dark:border-slate-700">
+                            <button 
+                                onClick={() => openEdit(dept)}
+                                className="flex-1 py-2 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold text-sm hover:bg-indigo-600 hover:text-white transition-colors"
+                            >
+                                Edit Details
+                            </button>
+                            <button 
+                                onClick={() => setDeleteModal({ show: true, dept })}
+                                className="p-2 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-500 hover:bg-red-500 hover:text-white transition-colors"
+                            >
+                                <Trash2 className="w-5 h-5" />
+                            </button>
+                        </div>
+                    </motion.div>
+                ))}
             </div>
-          )}
-        </div>
+        )}
       </div>
-
-      {/* --- DELETE CONFIRMATION MODAL --- */}
-      {showDeleteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200 dark:border-slate-700 scale-100 animate-in zoom-in-95 duration-200">
-            
-            <div className="flex items-center gap-4 mb-4">
-              <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center text-red-600">
-                <AlertTriangle className="w-6 h-6" />
-              </div>
-              <div>
-                <h3 className="text-xl font-bold text-slate-900 dark:text-white">Delete Admin?</h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400">This action cannot be undone.</p>
-              </div>
-            </div>
-
-            <p className="text-slate-600 dark:text-slate-300 mb-6 leading-relaxed">
-              Are you sure you want to delete <span className="font-bold text-slate-900 dark:text-white">{userToDelete?.name}</span>? 
-              <br/>
-              This will remove their access and unassign them from their Department.
-            </p>
-
-            <div className="flex gap-3 justify-end">
-              <button 
-                onClick={() => setShowDeleteModal(false)}
-                className="px-4 py-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg font-medium transition"
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={handleDelete}
-                className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition shadow-lg shadow-red-500/30"
-              >
-                Yes, Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
     </div>
   );
 };
