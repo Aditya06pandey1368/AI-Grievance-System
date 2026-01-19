@@ -4,10 +4,10 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import make_pipeline
 
-# 1. THE EXPANDED DATASET (10 Distinct Departments)
+# 1. THE DATASET (Labels match your Database EXACTLY)
 data = [
     # ---------------------------------------------------------
-    # 1. ROAD (Infrastructure, Traffic, Potholes)
+    # 1. ROAD
     # ---------------------------------------------------------
     ("Deep pothole on main road causing accidents", "Road"),
     ("Traffic light signal stuck on red", "Road"),
@@ -21,7 +21,7 @@ data = [
     ("Divider broken on the main street", "Road"),
 
     # ---------------------------------------------------------
-    # 2. ELECTRICITY (Power, Wires, Poles)
+    # 2. ELECTRICITY
     # ---------------------------------------------------------
     ("Street light pole is rusted and falling", "Electricity"),
     ("Street light not working at night", "Electricity"),
@@ -35,7 +35,7 @@ data = [
     ("Electric pole leaning dangerously", "Electricity"),
 
     # ---------------------------------------------------------
-    # 3. WATER (Supply, Leakage, Quality)
+    # 3. WATER
     # ---------------------------------------------------------
     ("Dirty water coming from the tap smells bad", "Water"),
     ("Pipeline burst and water is wasting", "Water"),
@@ -47,7 +47,7 @@ data = [
     ("Tap water is muddy and brown", "Water"),
     
     # ---------------------------------------------------------
-    # 4. SANITATION (Garbage, Drains, Cleaning)
+    # 4. SANITATION
     # ---------------------------------------------------------
     ("Garbage truck did not come today", "Sanitation"),
     ("Dustbins are overflowing in the park", "Sanitation"),
@@ -60,7 +60,7 @@ data = [
     ("Dead rat smell coming from the gutter", "Sanitation"),
 
     # ---------------------------------------------------------
-    # 5. POLICE (Theft, Crime, Nuisance)
+    # 5. POLICE
     # ---------------------------------------------------------
     ("Loud noise from neighbors late at night", "Police"),
     ("Suspicious people loitering in the park", "Police"),
@@ -76,7 +76,7 @@ data = [
     ("Illegal gambling activity observed", "Police"),
 
     # ---------------------------------------------------------
-    # 6. FIRE (Fire outbreaks, Gas leaks)
+    # 6. FIRE
     # ---------------------------------------------------------
     ("Gas leak smell coming from neighbor's house", "Fire"),
     ("Huge fire broke out in the garbage dump", "Fire"),
@@ -87,19 +87,19 @@ data = [
     ("Car caught fire on the road", "Fire"),
 
     # ---------------------------------------------------------
-    # 7. URBAN PLANNING & REGULATION (Construction, Encroachment)
+    # 7. URBAN PLANNING & REGULATION
     # ---------------------------------------------------------
-    ("Illegal construction happening without permit", "Urban Planning"),
-    ("Neighbor is encroaching on public land", "Urban Planning"),
-    ("Shop extended onto the footpath illegally", "Urban Planning"),
-    ("Building violates zoning regulations", "Urban Planning"),
-    ("Illegal basement digging impacting my house", "Urban Planning"),
-    ("Unauthorised floor added to the building", "Urban Planning"),
-    ("Commercial shop running in residential area", "Urban Planning"),
-    ("Hoardings and banners blocking the view", "Urban Planning"),
+    ("Illegal construction happening without permit", "URBAN PLANNING & REGULATION"),
+    ("Neighbor is encroaching on public land", "URBAN PLANNING & REGULATION"),
+    ("Shop extended onto the footpath illegally", "URBAN PLANNING & REGULATION"),
+    ("Building violates zoning regulations", "URBAN PLANNING & REGULATION"),
+    ("Illegal basement digging impacting my house", "URBAN PLANNING & REGULATION"),
+    ("Unauthorised floor added to the building", "URBAN PLANNING & REGULATION"),
+    ("Commercial shop running in residential area", "URBAN PLANNING & REGULATION"),
+    ("Hoardings and banners blocking the view", "URBAN PLANNING & REGULATION"),
 
     # ---------------------------------------------------------
-    # 8. ENVIRONMENTAL PROTECTION (Pollution, Trees, Dumping)
+    # 8. ENVIRONMENTAL PROTECTION
     # ---------------------------------------------------------
     ("Factory releasing black smoke causing air pollution", "Environmental Protection"),
     ("Chemicals being dumped into the river", "Environmental Protection"),
@@ -111,19 +111,20 @@ data = [
     ("Lake water is turning green and toxic", "Environmental Protection"),
 
     # ---------------------------------------------------------
-    # 9. ANIMAL CONTROL & VETERINARY (Stray animals, Cruelty)
+    # 9. ANIMAL CONTROL & VETERINARY
     # ---------------------------------------------------------
-    ("Stray dog bit a child in the colony", "Animal Control"),
-    ("Herd of cows blocking the traffic", "Animal Control"),
-    ("Dead animal lying on the road needs removal", "Animal Control"),
-    ("Monkey menace destroying crops and plants", "Animal Control"),
-    ("Someone is beating a dog cruelly", "Animal Control"),
-    ("Aggressive stray dogs chasing bikes", "Animal Control"),
-    ("Injured cow needs medical attention", "Animal Control"),
-    ("Snake found in the residential compound", "Animal Control"),
+    ("Stray dog bit a child in the colony", "Animal Control & Veterinary"),
+    ("Herd of cows blocking the traffic", "Animal Control & Veterinary"),
+    ("Dead animal lying on the road needs removal", "Animal Control & Veterinary"),
+    ("Monkey menace destroying crops and plants", "Animal Control & Veterinary"),
+    ("Someone is beating a dog cruelly", "Animal Control & Veterinary"),
+    ("Aggressive stray dogs chasing bikes", "Animal Control & Veterinary"),
+    ("Injured cow needs medical attention", "Animal Control & Veterinary"),
+    ("Snake found in the residential compound", "Animal Control & Veterinary"),
+    ("Dog barking aggressively at night", "Animal Control & Veterinary"),
 
     # ---------------------------------------------------------
-    # 10. DISASTER MANAGEMENT (Floods, Earthquakes, Major Collapse)
+    # 10. DISASTER MANAGEMENT
     # ---------------------------------------------------------
     ("Flood water entering houses after heavy rain", "Disaster Management"),
     ("Building collapsed trapping people inside", "Disaster Management"),
@@ -138,7 +139,6 @@ data = [
 df = pd.DataFrame(data, columns=["text", "category"])
 
 # 2. CREATE THE PIPELINE
-# Using 'lbfgs' solver (default) which is excellent for multiclass classification
 model = make_pipeline(
     TfidfVectorizer(ngram_range=(1, 2)), 
     LogisticRegression(C=10.0, max_iter=1000) 
