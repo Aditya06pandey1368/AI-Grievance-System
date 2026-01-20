@@ -18,7 +18,20 @@ const complaintSchema = new mongoose.Schema({
     type: String, 
     required: true,
     default: 'Other',
-    enum: ['Road', 'Electricity', 'Water', 'Police', 'Medical', 'Fire', 'Other', 'General'] 
+    enum: [
+        'Road', 
+        'Electricity', 
+        'Water', 
+        'Sanitation',
+        'Police', 
+        'Fire', 
+        'URBAN PLANNING & REGULATION', 
+        'Environmental Protection', 
+        'Animal Control & Veterinary', 
+        'Disaster Management',
+        'Other', 
+        'General'
+    ]
   },
   
   department: { type: mongoose.Schema.Types.ObjectId, ref: 'Department' },
