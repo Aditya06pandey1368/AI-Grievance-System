@@ -1,3 +1,4 @@
+// AdminDashboard.jsx
 import { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
@@ -315,7 +316,7 @@ const CustomDropdown = ({ value, options, onChange, type }) => {
                 default: return 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-600 hover:border-indigo-500';
             }
         }
-        return 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-600 hover:border-indigo-500';
+        return 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-600 hover:border-indigo-500 hover:bg-slate-50 dark:hover:bg-slate-700';
     };
 
     return (

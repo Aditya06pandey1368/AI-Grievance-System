@@ -1,3 +1,4 @@
+// ComplaintAction.jsx
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { CheckCircle, XCircle } from "lucide-react";
@@ -16,7 +17,7 @@ const ComplaintAction = () => {
   const handleAction = async (status) => {
     if (!remarks) return toast.error("Please add remarks first");
     
-    // --- BUG 3 FIX: CONFIRMATION POPUP ---
+    // --- CONFIRMATION POPUP ---
     const isConfirmed = window.confirm(
         status === 'rejected' 
         ? "⚠️ Are you sure you want to REJECT this complaint?\n\nThis will decrease the citizen's Trust Score."

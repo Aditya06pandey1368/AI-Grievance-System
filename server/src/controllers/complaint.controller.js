@@ -1,3 +1,4 @@
+// complaint.controller.js
 import axios from 'axios';
 import Complaint from '../models/Complaint.model.js';
 import User from '../models/User.model.js';
@@ -82,7 +83,7 @@ export const createComplaint = async (req, res) => {
         }
     }
 
-    // --- 3. CREATE COMPLAINT (Images Removed) ---
+    // --- 3. CREATE COMPLAINT ---
     const complaint = await Complaint.create({
       title,
       description,
@@ -168,6 +169,19 @@ export const updateComplaintStatus = async (req, res) => {
     // 2. Update Status
     complaint.status = status;
 
+    // --- LOGIC CHANGE: If manually set to assigned, try to ensure officer is set ---
+    if (status === 'assigned' && !complaint.assignedOfficer) {
+        if (complaint.department && complaint.zone) {
+            const officer = await Officer.findOne({ 
+                jurisdictionZones: { $in: [complaint.zone] },
+                department: complaint.department
+            });
+            if (officer) {
+                complaint.assignedOfficer = officer.user;
+            }
+        }
+    }
+
     // 3. Internal History (Complaint Timeline)
     complaint.history.push({
       action: `STATUS_CHANGE: ${oldStatus} -> ${status}`,
@@ -244,6 +258,20 @@ export const reclassifyComplaint = async (req, res) => {
         complaint.department = departmentId;
         isChanged = true;
 
+        // ** Find New Officer for the New Department in the Same Zone **
+        const newOfficer = await Officer.findOne({
+            department: departmentId,
+            jurisdictionZones: { $in: [complaint.zone] }
+        });
+
+        if (newOfficer) {
+            complaint.assignedOfficer = newOfficer.user;
+            complaint.status = 'assigned';
+        } else {
+            complaint.assignedOfficer = null;
+            complaint.status = 'submitted'; // Reset if no officer found
+        }
+
         await AuditLog.create({
             action: 'DEPT_REASSIGNMENT',
             actor: req.user._id,
@@ -287,11 +315,12 @@ export const getAllComplaints = async (req, res) => {
   try {
     let filter = {};
 
-    // Role Filtering
+    // 1. Dept Admin: See complaints for their department
     if (req.user.role === 'dept_admin') {
        const dept = await Department.findOne({ admin: req.user._id });
        if (dept) filter.department = dept._id;
     }
+    // 2. Officer: See complaints for their department (or just assigned to them)
     if (req.user.role === 'officer') {
        const officer = await Officer.findOne({ user: req.user._id });
        if (officer) filter.department = officer.department; 
