@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Search, ArrowLeft, CheckCircle, Calendar, User, FileText } from "lucide-react";
+import { Search, ArrowLeft, CheckCircle, Calendar, User, FileText, XCircle } from "lucide-react";
 import api from "../../services/api";
 import Navbar from "../../components/layout/Navbar";
-import Input from "../../components/ui/Input";
 
 const ResolvedComplaints = () => {
   const [tasks, setTasks] = useState([]);
@@ -91,7 +90,8 @@ const ResolvedComplaints = () => {
                                 <div>
                                     <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
                                         {task.title}
-                                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border ${task.status === 'resolved' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-red-100 text-red-700 border-red-200'}`}>
+                                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border flex items-center gap-1 ${task.status === 'resolved' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-red-100 text-red-700 border-red-200'}`}>
+                                            {task.status === 'resolved' ? <CheckCircle className="w-3 h-3"/> : <XCircle className="w-3 h-3"/>}
                                             {task.status}
                                         </span>
                                     </h3>
@@ -108,7 +108,7 @@ const ResolvedComplaints = () => {
                             </div>
 
                             <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700">
-                                <p className="text-xs font-bold text-slate-400 uppercase mb-1">Final Remarks</p>
+                                <p className="text-xs font-bold text-slate-400 uppercase mb-1">Status Remarks</p>
                                 <p className="text-slate-600 dark:text-slate-300 italic text-sm">
                                     "{task.history[task.history.length - 1]?.remarks || "No remarks provided."}"
                                 </p>

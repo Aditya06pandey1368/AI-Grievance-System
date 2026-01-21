@@ -50,6 +50,7 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/unauthorized" element={<Unauthorized />} />
+            <Route path="/complaint/:id" element={<ComplaintDetail />} />
 
             {/* --- CITIZEN ROUTES (Fixed) --- */}
             <Route element={<ProtectedRoute allowedRoles={['citizen']} />}>
@@ -58,7 +59,6 @@ function App() {
                   <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/submit-complaint" element={<SubmitComplaint />} />
                   <Route path="/my-complaints" element={<MyComplaints />} />
-                  <Route path="/complaint/:id" element={<ComplaintDetail />} />
                </Route>
             </Route>
 

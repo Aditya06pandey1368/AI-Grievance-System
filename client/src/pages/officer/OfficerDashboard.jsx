@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Clock, MapPin, AlertTriangle, User, ArrowRight, 
-  PlayCircle, CheckCircle, XCircle, History, AlertCircle 
+  PlayCircle, CheckCircle, XCircle, History
 } from "lucide-react";
 import api from "../../services/api";
 import Navbar from "../../components/layout/Navbar";
@@ -13,21 +13,17 @@ const OfficerDashboard = () => {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  // Modal State for Actions
-  const [actionModal, setActionModal] = useState({ show: false, type: null, id: null });
-  const [remarks, setRemarks] = useState("");
+  // Modal State for Confirmation
+  const [confirmModal, setConfirmModal] = useState({ show: false, action: null, id: null });
 
-  // Fetch complaints assigned to THIS officer
   const fetchTasks = async () => {
     try {
       const { data } = await api.get('/complaints/my-history');
       if (data.success) {
-        // Filter OUT resolved/rejected for main dashboard
+        // Filter OUT resolved/rejected
         const activeTasks = data.data.filter(t => t.status !== 'resolved' && t.status !== 'rejected');
         
-        // SORTING LOGIC: 
-        // 1. Priority (Critical > High > Medium > Low)
-        // 2. Date (Oldest First - to clear backlog)
+        // SORTING: Priority (Critical > High) -> Date (Oldest First)
         const priorityWeight = { 'Critical': 4, 'High': 3, 'Medium': 2, 'Low': 1 };
         
         activeTasks.sort((a, b) => {
@@ -48,34 +44,33 @@ const OfficerDashboard = () => {
   useEffect(() => { fetchTasks(); }, []);
 
   // --- ACTIONS ---
-  
-  // 1. Simple Status Change (In Progress)
-  const markInProgress = async (id) => {
-    if (!window.confirm("Start working on this complaint?")) return;
-    try {
-        await api.put(`/complaints/${id}/status`, { status: 'in_progress', remarks: 'Officer started working on the issue.' });
-        toast.success("Marked as In Progress");
-        fetchTasks();
-    } catch (error) {
-        toast.error("Failed to update status");
-    }
-  };
+  const handleConfirm = async () => {
+    const { action, id } = confirmModal;
+    setConfirmModal({ show: false, action: null, id: null }); // Close immediately
 
-  // 2. Modal Submission (Resolve/Reject)
-  const submitAction = async () => {
-    if (!remarks.trim()) return toast.error("Remarks are required.");
-    
+    // Default remarks based on action
+    let status = '';
+    let defaultRemarks = '';
+
+    if (action === 'start') {
+        status = 'in_progress';
+        defaultRemarks = 'Officer started working on the issue.';
+    } else if (action === 'resolve') {
+        status = 'resolved';
+        defaultRemarks = 'Complaint resolved by officer.';
+    } else if (action === 'reject') {
+        status = 'rejected';
+        defaultRemarks = 'Complaint rejected by officer.';
+    }
+
     try {
-        await api.put(`/complaints/${actionModal.id}/status`, { 
-            status: actionModal.type, 
-            remarks: remarks 
-        });
-        toast.success(`Complaint ${actionModal.type === 'resolved' ? 'Resolved' : 'Rejected'}`);
-        setActionModal({ show: false, type: null, id: null });
-        setRemarks("");
-        fetchTasks();
+        // ✅ FIX: Changed from .put() to .patch() to match backend route
+        await api.patch(`/complaints/${id}/status`, { status, remarks: defaultRemarks });
+        toast.success(`Action Successful: ${status.replace('_', ' ')}`);
+        fetchTasks(); // Refresh list
     } catch (error) {
-        toast.error("Action failed");
+        console.error(error);
+        toast.error("Action failed. Please try again.");
     }
   };
 
@@ -94,28 +89,31 @@ const OfficerDashboard = () => {
     <div className="min-h-screen bg-slate-50 dark:bg-[#0f172a] transition-colors font-sans pb-20">
       <Navbar />
       
-      {/* --- ACTION MODAL --- */}
+      {/* --- CONFIRMATION MODAL --- */}
       <AnimatePresence>
-        {actionModal.show && (
+        {confirmModal.show && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
                 <motion.div 
                     initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
-                    className="bg-white dark:bg-slate-800 w-full max-w-lg rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden"
+                    className="bg-white dark:bg-slate-800 w-full max-w-sm rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden"
                 >
-                    <div className={`p-6 text-white text-center ${actionModal.type === 'resolved' ? 'bg-green-600' : 'bg-red-600'}`}>
-                        <h3 className="text-2xl font-bold uppercase tracking-wider">{actionModal.type === 'resolved' ? 'Resolve Case' : 'Reject Case'}</h3>
-                        <p className="opacity-90 text-sm">Please provide final remarks before closing.</p>
+                    <div className={`p-6 text-center text-white ${confirmModal.action === 'resolve' ? 'bg-green-600' : confirmModal.action === 'reject' ? 'bg-red-600' : 'bg-blue-600'}`}>
+                        <div className="mb-3 flex justify-center">
+                            {confirmModal.action === 'resolve' && <CheckCircle className="w-12 h-12" />}
+                            {confirmModal.action === 'reject' && <XCircle className="w-12 h-12" />}
+                            {confirmModal.action === 'start' && <PlayCircle className="w-12 h-12" />}
+                        </div>
+                        <h3 className="text-xl font-bold uppercase tracking-wider">
+                            {confirmModal.action === 'start' ? 'Start Task?' : confirmModal.action === 'resolve' ? 'Resolve Case?' : 'Reject Case?'}
+                        </h3>
                     </div>
-                    <div className="p-6">
-                        <textarea 
-                            className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4 focus:ring-2 focus:ring-indigo-500 outline-none resize-none h-32"
-                            placeholder={actionModal.type === 'resolved' ? "Describe how the issue was fixed..." : "Reason for rejection..."}
-                            value={remarks}
-                            onChange={(e) => setRemarks(e.target.value)}
-                        ></textarea>
-                        <div className="flex gap-4 mt-6">
-                            <button onClick={() => setActionModal({ show: false })} className="flex-1 py-3 rounded-xl border border-slate-300 dark:border-slate-600 font-bold hover:bg-slate-100 dark:hover:bg-slate-700 transition">Cancel</button>
-                            <button onClick={submitAction} className={`flex-1 py-3 rounded-xl text-white font-bold shadow-lg transition transform active:scale-95 ${actionModal.type === 'resolved' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}>Confirm</button>
+                    <div className="p-6 text-center">
+                        <p className="text-slate-600 dark:text-slate-300 mb-6">
+                            Are you sure you want to perform this action?
+                        </p>
+                        <div className="flex gap-4 justify-center">
+                            <button onClick={() => setConfirmModal({ show: false })} className="flex-1 py-3 rounded-xl border border-slate-300 dark:border-slate-600 font-bold hover:bg-slate-100 dark:hover:bg-slate-700 transition">No</button>
+                            <button onClick={handleConfirm} className={`flex-1 py-3 rounded-xl text-white font-bold shadow-lg transition transform active:scale-95 ${confirmModal.action === 'resolve' ? 'bg-green-600 hover:bg-green-700' : confirmModal.action === 'reject' ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'}`}>Yes</button>
                         </div>
                     </div>
                 </motion.div>
@@ -133,7 +131,7 @@ const OfficerDashboard = () => {
                 </h1>
                 <p className="text-slate-500 dark:text-slate-400 mt-1">Prioritize critical tasks. Oldest pending cases shown first.</p>
             </div>
-            <Link to="/officer/history">
+            <Link to="/officer/resolved-complaints">
                 <button className="flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm hover:shadow-md transition text-slate-700 dark:text-slate-200 font-bold">
                     <History className="w-4 h-4" /> Resolved History
                 </button>
@@ -198,16 +196,16 @@ const OfficerDashboard = () => {
 
                            <div className="flex gap-2 w-full sm:w-auto">
                                {task.status !== 'in_progress' && (
-                                   <button onClick={() => markInProgress(task._id)} className="flex-1 sm:flex-none py-2.5 px-4 rounded-xl bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-bold text-sm hover:bg-blue-200 dark:hover:bg-blue-900/50 transition flex items-center justify-center gap-2" title="Start Working">
+                                   <button onClick={() => setConfirmModal({ show: true, action: 'start', id: task._id })} className="flex-1 sm:flex-none py-2.5 px-4 rounded-xl bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-bold text-sm hover:bg-blue-200 dark:hover:bg-blue-900/50 transition flex items-center justify-center gap-2" title="Start Working">
                                        <PlayCircle className="w-5 h-5" /> Start
                                    </button>
                                )}
                                
-                               <button onClick={() => setActionModal({ show: true, type: 'rejected', id: task._id })} className="flex-1 sm:flex-none py-2.5 px-4 rounded-xl bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-bold text-sm hover:bg-red-200 dark:hover:bg-red-900/50 transition flex items-center justify-center gap-2" title="Reject">
+                               <button onClick={() => setConfirmModal({ show: true, action: 'reject', id: task._id })} className="flex-1 sm:flex-none py-2.5 px-4 rounded-xl bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-bold text-sm hover:bg-red-200 dark:hover:bg-red-900/50 transition flex items-center justify-center gap-2" title="Reject">
                                    <XCircle className="w-5 h-5" />
                                </button>
 
-                               <button onClick={() => setActionModal({ show: true, type: 'resolved', id: task._id })} className="flex-1 sm:flex-none py-2.5 px-6 rounded-xl bg-green-500 hover:bg-green-600 text-white font-bold text-sm shadow-lg shadow-green-500/30 transition flex items-center justify-center gap-2">
+                               <button onClick={() => setConfirmModal({ show: true, action: 'resolve', id: task._id })} className="flex-1 sm:flex-none py-2.5 px-6 rounded-xl bg-green-500 hover:bg-green-600 text-white font-bold text-sm shadow-lg shadow-green-500/30 transition flex items-center justify-center gap-2">
                                    <CheckCircle className="w-5 h-5" /> Resolve
                                </button>
                            </div>

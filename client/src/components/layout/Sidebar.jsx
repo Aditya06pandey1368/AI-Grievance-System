@@ -23,8 +23,7 @@ const Sidebar = ({ isOpen, role = "citizen", onClose }) => {
     ],
     officer: [
       { name: "Overview", path: "/officer/dashboard", icon: <LayoutDashboard className="w-5 h-5" /> },
-      { name: "Assigned Tasks", path: "/officer/tasks", icon: <FileText className="w-5 h-5" /> },
-      { name: "Resolved", path: "/officer/resolved", icon: <ShieldAlert className="w-5 h-5" /> },
+      { name: "Resolved", path: "/officer/resolved-complaints", icon: <ShieldAlert className="w-5 h-5" /> },
     ],
     dept_admin : [
       { name: "Dept Overview", path: "/admin/dashboard", icon: <LayoutDashboard className="w-5 h-5" /> },
