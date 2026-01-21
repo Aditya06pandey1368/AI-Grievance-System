@@ -22,7 +22,7 @@ import ComplaintDetail from "./pages/citizen/ComplaintDetail";
 
 // --- OFFICER PAGES ---
 import OfficerDashboard from "./pages/officer/OfficerDashboard";
-import ComplaintAction from "./pages/officer/ComplaintAction";
+import ResolvedComplaints from "./pages/officer/ResolvedComplaints";
 
 // --- ADMIN PAGES ---
 import DeptDashboard from "./pages/admin/DeptDashboard";
@@ -66,8 +66,7 @@ function App() {
             <Route element={<ProtectedRoute allowedRoles={['officer']} />}>
               <Route element={<DashboardLayout role="officer" />}>
                 <Route path="/officer/dashboard" element={<OfficerDashboard />} />
-                <Route path="/officer/tasks" element={<OfficerDashboard />} />
-                <Route path="/officer/complaint/:id/action" element={<ComplaintAction />} />
+                <Route path="/officer/resolved-complaints" element={<ResolvedComplaints/>} />
               </Route>
             </Route>
 
