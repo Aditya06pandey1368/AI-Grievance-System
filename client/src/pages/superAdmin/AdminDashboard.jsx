@@ -1,5 +1,5 @@
-// AdminDashboard.jsx
 import { useEffect, useState, useRef } from "react";
+import { Link } from "react-router-dom"; // Added Link import
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   CheckCircle, Clock, AlertCircle, RefreshCcw, 
@@ -108,27 +108,27 @@ const AdminDashboard = () => {
       {/* CONFIRMATION MODAL */}
       <AnimatePresence>
         {pendingAction && (
-            <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 p-4">
+            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4">
                 <motion.div 
-                  initial={{ scale: 0.95, opacity: 0 }} 
+                  initial={{ scale: 0.9, opacity: 0 }} 
                   animate={{ scale: 1, opacity: 1 }} 
-                  exit={{ scale: 0.95, opacity: 0 }} 
-                  className="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden"
+                  exit={{ scale: 0.9, opacity: 0 }} 
+                  className="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden"
                 >
                     <div className="p-8 text-center">
-                        <div className="w-16 h-16 bg-indigo-100 dark:bg-indigo-900 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <div className="w-16 h-16 bg-indigo-100 dark:bg-indigo-900 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
                             <AlertTriangle className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
                         </div>
                         <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Confirm Change?</h3>
-                        <p className="text-slate-600 dark:text-slate-300 mb-8 leading-relaxed">
-                            Change <span className="font-bold uppercase">{pendingAction.type}</span> to <span className="font-bold text-indigo-600 dark:text-indigo-400">"{pendingAction.label}"</span>?
+                        <p className="text-slate-500 dark:text-slate-400 mb-8 leading-relaxed">
+                            Are you sure you want to update <span className="font-bold uppercase text-slate-700 dark:text-slate-200">{pendingAction.type}</span> to <span className="font-bold text-indigo-600 dark:text-indigo-400">"{pendingAction.label}"</span>?
                         </p>
                         <div className="flex gap-4">
-                            <button onClick={() => setPendingAction(null)} className="flex-1 py-3 rounded-xl border border-slate-300 dark:border-slate-600 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                            <button onClick={() => setPendingAction(null)} className="flex-1 py-3 rounded-xl border border-slate-300 dark:border-slate-600 font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
                               Cancel
                             </button>
-                            <button onClick={executeUpdate} className="flex-1 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-lg transition-transform active:scale-95">
-                              Confirm
+                            <button onClick={executeUpdate} className="flex-1 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-lg transition-all transform active:scale-95">
+                              Confirm Update
                             </button>
                         </div>
                     </div>
@@ -137,14 +137,14 @@ const AdminDashboard = () => {
         )}
       </AnimatePresence>
 
-      <div className="pt-24 px-6 max-w-[1600px] mx-auto pb-24">
+      <div className="pt-24 px-6 max-w-[1600px] mx-auto pb-12">
         
         {/* HEADER */}
         <div className="flex flex-col md:flex-row justify-between items-end mb-10 gap-6">
           <div>
             <h1 className="text-4xl font-extrabold flex items-center gap-3 tracking-tight text-slate-900 dark:text-white">
               <ShieldAlert className="w-10 h-10 text-indigo-600 dark:text-indigo-400" /> 
-              Super Admin <span className="text-slate-500 dark:text-slate-400">Center</span>
+              Super Admin <span className="text-slate-400 dark:text-slate-500">Center</span>
             </h1>
             <p className="text-slate-500 dark:text-slate-400 mt-2 text-lg font-medium">
               Global oversight of all grievances and departmental workflows.
@@ -170,7 +170,6 @@ const AdminDashboard = () => {
         </div>
 
         {/* MAIN TABLE SECTION */}
-        {/* FIX: Removed 'overflow-hidden' from here so dropdowns can stick out */}
         <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-xl border border-slate-200 dark:border-slate-700">
           
           <div className="p-6 border-b border-slate-200 dark:border-slate-700 flex flex-wrap gap-4 bg-white dark:bg-slate-900 rounded-t-3xl items-center">
@@ -186,7 +185,6 @@ const AdminDashboard = () => {
              </div>
           </div>
 
-          {/* FIX: Removed 'overflow-hidden' to allow dropdowns to be visible */}
           <div className="min-h-[500px]">
             <table className="w-full text-left border-collapse">
               <thead className="bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 text-xs uppercase font-bold text-slate-500 dark:text-slate-400 sticky top-0 z-10">
@@ -209,7 +207,6 @@ const AdminDashboard = () => {
                       animate={{ opacity: 1, y: 0 }} 
                       transition={{ delay: idx * 0.05 }}
                       key={c._id} 
-                      // FIX: Dynamic z-index ensures top rows overlay bottom rows (dropdowns work!)
                       style={{ zIndex: filteredComplaints.length - idx, position: "relative" }}
                       className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors group"
                     >
@@ -219,9 +216,12 @@ const AdminDashboard = () => {
                                 {c.citizen?.name?.charAt(0) || "U"}
                             </div>
                             <div>
-                                <div className="font-bold text-slate-900 dark:text-white line-clamp-1 text-base mb-1 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                                  {c.title}
-                                </div>
+                                {/* ADDED LINK HERE */}
+                                <Link to={`/complaint/${c._id}`}>
+                                    <div className="font-bold text-slate-900 dark:text-white line-clamp-1 text-base mb-1 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors cursor-pointer hover:underline">
+                                        {c.title}
+                                    </div>
+                                </Link>
                                 <div className="text-xs text-slate-500 font-medium flex items-center gap-2">
                                     <span className="font-mono bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600">
                                       #{c._id.slice(-6).toUpperCase()}
@@ -235,7 +235,7 @@ const AdminDashboard = () => {
                       <td className="px-8 py-6 relative">
                         <CustomDropdown 
                             value={c.department?._id || "unassigned"}
-                            options={[ ...departments.map(d => ({ label: d.name, value: d._id }))]}
+                            options={[{label: "Unassigned", value: "unassigned"}, ...departments.map(d => ({ label: d.name, value: d._id }))]}
                             onChange={(val) => initiateChange(c._id, 'department', val)}
                             type="department"
                         />
@@ -281,7 +281,6 @@ const AdminDashboard = () => {
   );
 };
 
-// --- SOLID OPAQUE DROPDOWN COMPONENT (Fixes visibility) ---
 const CustomDropdown = ({ value, options, onChange, type }) => {
     const [isOpen, setIsOpen] = useState(false);
     const containerRef = useRef(null);
@@ -340,7 +339,6 @@ const CustomDropdown = ({ value, options, onChange, type }) => {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: 5 }}
                         transition={{ duration: 0.1 }}
-                        // FIX: Solid bg-white/bg-slate-900 (No glass effect) and high z-index
                         className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-600 overflow-hidden z-50 min-w-[140px]"
                     >
                         <div className="max-h-60 overflow-y-auto py-1">

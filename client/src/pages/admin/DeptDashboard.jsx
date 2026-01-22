@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import { Link } from "react-router-dom"; // Added Link import
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend
@@ -288,9 +289,12 @@ const DeptDashboard = () => {
                                 {c.citizen?.name?.charAt(0) || "U"}
                             </div>
                             <div>
-                                <div className="font-bold text-slate-900 dark:text-white line-clamp-1 text-base mb-1 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                                  {c.title}
-                                </div>
+                                {/* ADDED LINK HERE */}
+                                <Link to={`/complaint/${c._id}`}>
+                                    <div className="font-bold text-slate-900 dark:text-white line-clamp-1 text-base mb-1 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors cursor-pointer hover:underline">
+                                        {c.title}
+                                    </div>
+                                </Link>
                                 <div className="text-xs text-slate-500 font-medium flex items-center gap-2">
                                     <span className="font-mono bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600">
                                       #{c._id.slice(-6).toUpperCase()}
@@ -350,7 +354,7 @@ const DeptDashboard = () => {
   );
 };
 
-// --- SOLID OPAQUE DROPDOWN COMPONENT ---
+// --- SOLID OPAQUE DROPDOWN COMPONENT (Fixes visibility) ---
 const CustomDropdown = ({ value, options, onChange, type }) => {
     const [isOpen, setIsOpen] = useState(false);
     const containerRef = useRef(null);
