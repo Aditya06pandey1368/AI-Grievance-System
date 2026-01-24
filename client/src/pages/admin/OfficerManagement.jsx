@@ -2,7 +2,6 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { UserPlus, Mail, Lock, MapPin, ShieldCheck, User, Phone, BadgeCheck } from "lucide-react";
 import Navbar from "../../components/layout/Navbar";
-import Button from "../../components/ui/Button";
 import api from "../../services/api";
 import { toast } from "react-hot-toast";
 
@@ -13,13 +12,13 @@ const OfficerManagement = () => {
   const [loading, setLoading] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
-  // Validation Logic
+  // Validation
   const isFormValid = 
     formData.name.trim() !== "" && 
     formData.email.trim() !== "" && 
     formData.password.trim() !== "" && 
     formData.zones.trim() !== "" &&
-    /^\d{10}$/.test(formData.mobile); // Strict 10-digit check
+    /^\d{10}$/.test(formData.mobile);
 
   const handlePreSubmit = (e) => {
     e.preventDefault();
@@ -40,7 +39,7 @@ const OfficerManagement = () => {
       };
       
       await api.post("/admin/create-officer", payload);
-      toast.success("Officer created & assigned successfully!");
+      toast.success("Officer created successfully!");
       setFormData({ name: "", email: "", password: "", mobile: "", zones: "" });
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to create officer");
@@ -142,7 +141,7 @@ const OfficerManagement = () => {
                                     placeholder="9876543210" 
                                     value={formData.mobile} 
                                     onChange={e => {
-                                        const val = e.target.value.replace(/\D/g, ''); // Only numbers
+                                        const val = e.target.value.replace(/\D/g, ''); 
                                         setFormData({...formData, mobile: val});
                                     }} 
                                 />
@@ -195,13 +194,11 @@ const OfficerManagement = () => {
                     whileHover={{ rotateY: 5, rotateX: 5 }} 
                     className="w-96 h-[520px] bg-gradient-to-br from-slate-900 to-slate-800 rounded-[2.5rem] p-8 text-white shadow-2xl relative overflow-hidden border border-slate-700/50 flex flex-col"
                 >
-                    {/* Card Background Effects */}
                     <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/20 rounded-full blur-[60px] -translate-y-1/2 translate-x-1/2" />
                     <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-500/20 rounded-full blur-[60px] translate-y-1/2 -translate-x-1/2" />
                     <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none" />
 
                     <div className="relative z-10 flex flex-col h-full items-center">
-                         {/* Card Header */}
                          <div className="w-full flex justify-between items-center mb-8 border-b border-white/10 pb-4">
                              <div className="flex items-center gap-2">
                                 <ShieldCheck className="w-6 h-6 text-indigo-400" />
@@ -210,12 +207,10 @@ const OfficerManagement = () => {
                              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_10px_#22c55e]"></div>
                          </div>
 
-                         {/* Photo Placeholder */}
                          <div className="w-28 h-28 rounded-3xl bg-gradient-to-tr from-slate-700 to-slate-600 border-4 border-slate-700/50 shadow-inner flex items-center justify-center mb-6 relative">
                             <User className="w-12 h-12 text-slate-400" />
                          </div>
 
-                         {/* Main Info */}
                          <div className="text-center w-full space-y-1 mb-2">
                              <h3 className="text-2xl font-black tracking-tight leading-tight line-clamp-1">{formData.name || "Officer Name"}</h3>
                              <p className="text-indigo-300 text-sm font-bold uppercase tracking-wide">Field Officer</p>
@@ -223,7 +218,6 @@ const OfficerManagement = () => {
 
                          <div className="w-16 h-1 bg-gradient-to-r from-transparent via-indigo-500 to-transparent my-6 opacity-50" />
 
-                         {/* Details Grid */}
                          <div className="w-full space-y-3 mt-auto">
                             <div className="bg-white/5 rounded-2xl p-3 backdrop-blur-md border border-white/5 flex items-center gap-3">
                                 <div className="p-2 bg-white/10 rounded-lg"><Phone className="w-4 h-4 text-white" /></div>

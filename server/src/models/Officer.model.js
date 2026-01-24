@@ -19,6 +19,7 @@ const officerSchema = new mongoose.Schema({
   mobile: {
     type: String,
     required: true,
+    trim: true,
     validate: {
       validator: function(v) {
         return /^\d{10}$/.test(v);

@@ -6,7 +6,8 @@ import {
     deleteUser, 
     updateUserStatus,
     getAllAuditLogs,
-    getAllDepartments
+    getAllDepartments,
+    updateOfficer
 } from '../controllers/admin.controller.js';
 import { protect } from '../middlewares/authMiddleware.js';
 import { authorize } from '../middlewares/rbacMiddleware.js';
@@ -21,6 +22,7 @@ router.get('/users', authorize('super_admin', 'dept_admin'), getAllUsers);
 router.delete('/users/:id', authorize('super_admin', 'dept_admin'), deleteUser);
 router.put('/users/:id/status', authorize('super_admin', 'dept_admin'), updateUserStatus);
 router.get("/logs", authorize('super_admin'), getAllAuditLogs);
+router.put('/officers/:id', protect, authorize('dept_admin', 'super_admin'), updateOfficer);
 
 // SHARED ROUTES (Added 'officer')
 // Officers need this to view the dashboard stats
