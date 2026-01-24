@@ -15,20 +15,29 @@ const officerSchema = new mongoose.Schema({
     required: true 
   },
 
+  // --- NEW FIELD: MOBILE ---
+  mobile: {
+    type: String,
+    required: true,
+    validate: {
+      validator: function(v) {
+        return /^\d{10}$/.test(v);
+      },
+      message: props => `${props.value} is not a valid 10-digit mobile number!`
+    }
+  },
+
   // --- ROUTING MAGIC ---
-  // The specific areas this officer handles.
-  // Example: ["Sector-62", "Sector-63", "Ward-12"]
   jurisdictionZones: [{ type: String, required: true }],
   
   // Performance Stats
   activeComplaints: { type: Number, default: 0 },
   resolvedComplaints: { type: Number, default: 0 },
   
-  isAvailable: { type: Boolean, default: true } // Toggle for Leave/Vacation
+  isAvailable: { type: Boolean, default: true } 
 
 }, { timestamps: true });
 
-// This allows us to quickly find: "Officer in Road Dept covering Sector-62"
 officerSchema.index({ department: 1, jurisdictionZones: 1 });
 
 export default mongoose.model('Officer', officerSchema);
