@@ -66,7 +66,7 @@ const Footer = () => {
             <div className="flex gap-4">
               <SocialButton icon={<Github className="w-5 h-5" />} href="#" label="Github" />
               <SocialButton icon={<Linkedin className="w-5 h-5" />} href="#" label="LinkedIn" />
-              <SocialButton icon={<Mail className="w-5 h-5" />} href="#" label="Email" />
+              <SocialButton icon={<Mail className="w-5 h-5" />} href="$aaditya06pandey@gmail.com" label="Email" />
             </div>
           </div>
         </div>

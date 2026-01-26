@@ -36,6 +36,7 @@ import DeptManagement from "./pages/superAdmin/DeptManagement";
 import AuditLogs from "./pages/superAdmin/AuditLogs";
 import UserManagement from "./pages/superAdmin/UserManagement";
 import FraudMonitor from "./pages/superAdmin/FraudMonitor";
+import HowItWorks from "./components/layout/HowItWorks";
 
 function App() {
   return (
@@ -51,6 +52,7 @@ function App() {
             <Route path="/register" element={<Register />} />
             <Route path="/unauthorized" element={<Unauthorized />} />
             <Route path="/complaint/:id" element={<ComplaintDetail />} />
+            <Route path="/about" element={<HowItWorks />} />
 
             {/* --- CITIZEN ROUTES (Fixed) --- */}
             <Route element={<ProtectedRoute allowedRoles={['citizen']} />}>
