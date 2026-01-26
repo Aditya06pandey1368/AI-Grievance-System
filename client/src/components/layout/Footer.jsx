@@ -38,17 +38,7 @@ const Footer = () => {
               Empowering citizens with AI-driven governance. We bridge the gap between problems and resolutions using advanced routing algorithms.
             </p>
             
-            {/* Newsletter Input */}
-            <div className="relative mt-4">
-              <input 
-                type="email" 
-                placeholder="Enter email for updates" 
-                className="w-full bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-full py-3 pl-5 pr-12 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/50 transition-all"
-              />
-              <button className="absolute right-1.5 top-1.5 p-1.5 bg-primary-500 rounded-full text-white hover:bg-primary-600 transition-colors shadow-lg shadow-primary-500/30">
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            </div>
+            
           </div>
 
           {/* Links Column 1 */}
@@ -58,7 +48,6 @@ const Footer = () => {
               <li><Link to="/" className="hover:text-primary-500 transition-colors">Home</Link></li>
               <li><Link to="/about" className="hover:text-primary-500 transition-colors">How it Works</Link></li>
               <li><Link to="/features" className="hover:text-primary-500 transition-colors">Features</Link></li>
-              <li><Link to="/roadmap" className="hover:text-primary-500 transition-colors">Roadmap</Link></li>
             </ul>
           </div>
 
@@ -67,9 +56,7 @@ const Footer = () => {
             <h3 className="font-bold text-slate-900 dark:text-white mb-6">Support</h3>
             <ul className="space-y-4 text-sm text-slate-500 dark:text-slate-400">
               <li><Link to="/faq" className="hover:text-primary-500 transition-colors">Help Center</Link></li>
-              <li><Link to="/contact" className="hover:text-primary-500 transition-colors">Contact Us</Link></li>
               <li><Link to="/terms" className="hover:text-primary-500 transition-colors">Terms of Service</Link></li>
-              <li><Link to="/privacy" className="hover:text-primary-500 transition-colors">Privacy Policy</Link></li>
             </ul>
           </div>
 
@@ -78,7 +65,6 @@ const Footer = () => {
             <h3 className="font-bold text-slate-900 dark:text-white mb-6">Connect</h3>
             <div className="flex gap-4">
               <SocialButton icon={<Github className="w-5 h-5" />} href="#" label="Github" />
-              <SocialButton icon={<Twitter className="w-5 h-5" />} href="#" label="Twitter" />
               <SocialButton icon={<Linkedin className="w-5 h-5" />} href="#" label="LinkedIn" />
               <SocialButton icon={<Mail className="w-5 h-5" />} href="#" label="Email" />
             </div>
