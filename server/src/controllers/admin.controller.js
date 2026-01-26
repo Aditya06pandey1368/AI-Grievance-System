@@ -59,12 +59,12 @@ export const createOfficer = async (req, res) => {
         }
     );
 
-    // 6. Log Action
+    // 6. Log Action (Detailed)
     await AuditLog.create({
         action: 'OFFICER_CREATED',
         actor: req.user._id,
         targetId: officer._id,
-        details: `Created officer ${name} (Mobile: ${mobile}). Synced ${pendingComplaints.modifiedCount} pending complaints.`,
+        details: `Actor: ${req.user.name} (${req.user._id}) created Officer: ${name} (${user._id}). Dept: ${adminDept.name} (${adminDept._id}). Auto-assigned ${pendingComplaints.modifiedCount} complaints.`,
         ipAddress: req.ip || '127.0.0.1'
     });
 
@@ -80,38 +80,59 @@ export const createOfficer = async (req, res) => {
 // @route   PUT /api/admin/officers/:id
 export const updateOfficer = async (req, res) => {
     try {
-        const userId = req.params.id; // This is the User ID
+        const userId = req.params.id; // User ID
         const { name, email, mobile, zones, password } = req.body;
 
-        // 1. Update User Model
+        // 1. Fetch Current State for Comparison
         const user = await User.findById(userId);
-        if(!user) return res.status(404).json({ message: "User not found" });
+        const officer = await Officer.findOne({ user: userId });
 
-        user.name = name || user.name;
-        user.email = email || user.email;
-        if(password && password.trim() !== "") {
+        if(!user || !officer) return res.status(404).json({ message: "Officer not found" });
+
+        let changes = [];
+
+        // 2. Update User Model & Track Changes
+        if (name && user.name !== name) {
+            changes.push(`Name: ${user.name} -> ${name}`);
+            user.name = name;
+        }
+        if (email && user.email !== email) {
+            changes.push(`Email: ${user.email} -> ${email}`);
+            user.email = email;
+        }
+        if (password && password.trim() !== "") {
+            changes.push(`Password updated`);
             user.password = password; 
         }
         await user.save();
 
-        // 2. Update Officer Model
-        const officerUpdate = {};
-        if (mobile) officerUpdate.mobile = mobile;
-        if (zones) officerUpdate.jurisdictionZones = zones;
+        // 3. Update Officer Model & Track Changes
+        if (mobile && officer.mobile !== mobile) {
+            changes.push(`Mobile: ${officer.mobile} -> ${mobile}`);
+            officer.mobile = mobile;
+        }
+        
+        // Compare Zones (Array comparison)
+        const oldZones = JSON.stringify(officer.jurisdictionZones.sort());
+        const newZonesInput = zones ? zones : officer.jurisdictionZones;
+        const newZonesSorted = JSON.stringify(newZonesInput.sort());
+        
+        if (zones && oldZones !== newZonesSorted) {
+            changes.push(`Zones: [${officer.jurisdictionZones.join(', ')}] -> [${zones.join(', ')}]`);
+            officer.jurisdictionZones = zones;
+        }
+        
+        await officer.save();
 
-        const officer = await Officer.findOneAndUpdate(
-            { user: userId },
-            { $set: officerUpdate },
-            { new: true }
-        );
-
-        // 3. Log
-        await AuditLog.create({
-            action: 'OFFICER_UPDATED',
-            actor: req.user._id,
-            targetId: officer._id,
-            details: `Updated details for officer ${name}`
-        });
+        // 4. Detailed Audit Log
+        if (changes.length > 0) {
+            await AuditLog.create({
+                action: 'OFFICER_UPDATED',
+                actor: req.user._id,
+                targetId: officer._id,
+                details: `Actor: ${req.user.name} (${req.user._id}) updated Officer: ${user.name} (${user._id}). Changes: ${changes.join(', ')}`
+            });
+        }
 
         res.status(200).json({ success: true, message: "Officer updated successfully" });
 
@@ -153,6 +174,7 @@ export const getAllOfficers = async (req, res) => {
 };
 
 // @desc    Delete a User
+// @route   DELETE /api/admin/users/:id
 export const deleteUser = async (req, res) => {
   try {
     const userId = req.params.id;
@@ -162,22 +184,45 @@ export const deleteUser = async (req, res) => {
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
+    let auditDetails = `Actor: ${req.user.name} (${req.user._id}) deleted User: ${user.name} (${user._id}) Role: ${user.role}`;
+
+    // 1. Handle Officer Deletion
     if (user.role === 'officer') {
-        await Officer.deleteOne({ user: userId });
-        await Complaint.updateMany(
+        const officerProfile = await Officer.findOne({ user: userId }).populate('department');
+        if (officerProfile) {
+            auditDetails += ` | Officer Profile: ${officerProfile._id} | Dept: ${officerProfile.department?.name}`;
+            await Officer.deleteOne({ _id: officerProfile._id });
+        }
+
+        const result = await Complaint.updateMany(
             { assignedOfficer: userId },
             { 
                 $unset: { assignedOfficer: "" },
                 $set: { status: 'submitted' } 
             }
         );
+        auditDetails += ` | Unassigned ${result.modifiedCount} complaints.`;
     }
 
+    // 2. Handle Admin Deletion
     if (user.role === 'dept_admin') {
-        await Department.updateMany({ admin: userId }, { $unset: { admin: "" } });
+        const dept = await Department.findOne({ admin: userId });
+        if (dept) {
+            auditDetails += ` | Removed from Dept: ${dept.name} (${dept._id})`;
+            await Department.updateOne({ _id: dept._id }, { $unset: { admin: "" } });
+        }
     }
 
     await User.findByIdAndDelete(userId);
+
+    // 3. Log
+    await AuditLog.create({
+        action: 'USER_DELETED',
+        actor: req.user._id,
+        targetId: userId, // The deleted user's ID
+        details: auditDetails,
+        ipAddress: req.ip || '127.0.0.1'
+    });
 
     res.status(200).json({ success: true, message: "User deleted and associated data synced." });
 
@@ -187,7 +232,7 @@ export const deleteUser = async (req, res) => {
   }
 };
 
-// ... (Keep existing utilities like getAllUsers, etc.)
+// ... Utilities (No changes to logic, just context)
 export const getAllUsers = async (req, res) => {
   try {
     const users = await User.find().select('-password');
@@ -201,6 +246,18 @@ export const updateUserStatus = async (req, res) => {
   try {
     const { isActive } = req.body;
     const user = await User.findByIdAndUpdate(req.params.id, { isActive }, { new: true });
+    
+    // UPDATED LOGIC: Readable Action
+    const actionVerb = isActive ? "unbanned" : "banned";
+    
+    await AuditLog.create({
+        action: isActive ? 'USER_UNBANNED' : 'USER_BANNED',
+        actor: req.user._id,
+        targetId: user._id,
+        // "Super admin banned Rahul (ID)"
+        details: `${req.user.name} ${actionVerb} ${user.name} (${user._id})`
+    });
+
     res.json({ success: true, data: user });
   } catch (error) {
     res.status(500).json({ message: error.message });

@@ -2,7 +2,7 @@ import Department from '../models/Department.model.js';
 import User from '../models/User.model.js';
 import Officer from '../models/Officer.model.js';
 import Complaint from '../models/Complaint.model.js';
-import AuditLog from '../models/AuditLog.model.js'; // Import AuditLog
+import AuditLog from '../models/AuditLog.model.js'; 
 
 // @desc    Create Department AND its Admin User
 export const createDepartment = async (req, res) => {
@@ -35,12 +35,12 @@ export const createDepartment = async (req, res) => {
     newDept.admin = newAdmin._id;
     await newDept.save();
 
-    // 3. AUDIT LOG
+    // 3. AUDIT LOG (Detailed)
     await AuditLog.create({
         action: 'DEPT_CREATED',
         actor: req.user._id,
         targetId: newDept._id,
-        details: `Created Department: ${name} (${code}) with Admin: ${adminName}`
+        details: `Actor: ${req.user.name} (${req.user._id}) created Department: ${name} (${newDept._id}) | Code: ${code} | Admin Assigned: ${adminName} (${newAdmin._id})`
     });
 
     res.status(201).json({ success: true, message: "Department Created Successfully", data: newDept });
@@ -50,7 +50,7 @@ export const createDepartment = async (req, res) => {
   }
 };
 
-// @desc    Get All Departments (No changes needed here)
+// @desc    Get All Departments
 export const getAllDepartments = async (req, res) => {
     try {
         const depts = await Department.find().populate('admin', 'name email _id');
@@ -74,35 +74,52 @@ export const updateDepartment = async (req, res) => {
         const dept = await Department.findById(id).populate('admin');
         if (!dept) return res.status(404).json({ message: "Department not found" });
 
-        // Capture changes for log
-        const oldName = dept.name;
+        let changes = [];
 
-        // Update Dept
-        dept.name = name || dept.name;
-        dept.code = code || dept.code;
-        dept.defaultSLAHours = defaultSLAHours || dept.defaultSLAHours;
+        // Track Changes & Update Dept
+        if (name && dept.name !== name) {
+            changes.push(`Name: ${dept.name} -> ${name}`);
+            dept.name = name;
+        }
+        if (code && dept.code !== code) {
+            changes.push(`Code: ${dept.code} -> ${code}`);
+            dept.code = code;
+        }
+        if (defaultSLAHours && dept.defaultSLAHours != defaultSLAHours) {
+            changes.push(`SLA: ${dept.defaultSLAHours} -> ${defaultSLAHours}`);
+            dept.defaultSLAHours = defaultSLAHours;
+        }
         await dept.save();
 
-        // Update Admin
+        // Track Changes & Update Admin
         if (dept.admin) {
             const user = await User.findById(dept.admin._id);
             if (user) {
-                user.name = adminName || user.name;
-                user.email = adminEmail || user.email;
+                if (adminName && user.name !== adminName) {
+                    changes.push(`Admin Name: ${user.name} -> ${adminName}`);
+                    user.name = adminName;
+                }
+                if (adminEmail && user.email !== adminEmail) {
+                    changes.push(`Admin Email: ${user.email} -> ${adminEmail}`);
+                    user.email = adminEmail;
+                }
                 if (adminPassword && adminPassword.trim() !== "") {
+                    changes.push(`Admin Password Updated`);
                     user.password = adminPassword; 
                 }
                 await user.save();
             }
         }
 
-        // AUDIT LOG
-        await AuditLog.create({
-            action: 'DEPT_UPDATED',
-            actor: req.user._id,
-            targetId: dept._id,
-            details: `Updated Department: ${oldName} -> ${dept.name} (Code: ${dept.code})`
-        });
+        // AUDIT LOG (Detailed)
+        if (changes.length > 0) {
+            await AuditLog.create({
+                action: 'DEPT_UPDATED',
+                actor: req.user._id,
+                targetId: dept._id,
+                details: `Actor: ${req.user.name} (${req.user._id}) updated Dept: ${dept.name} (${dept._id}). Changes: ${changes.join(', ')}`
+            });
+        }
 
         res.json({ success: true, message: "Department Updated" });
     } catch (error) {
@@ -118,23 +135,29 @@ export const deleteDepartment = async (req, res) => {
         if (!dept) return res.status(404).json({ message: "Department not found" });
 
         const deptName = dept.name;
+        const deptId = dept._id;
 
         // Cleanup Logic
-        await Complaint.deleteMany({ department: id });
+        const deletedComplaints = await Complaint.deleteMany({ department: id });
         const officers = await Officer.find({ department: id });
         const officerUserIds = officers.map(o => o.user);
+        
         await Officer.deleteMany({ department: id });
-        await User.deleteMany({ _id: { $in: officerUserIds } });
-        if (dept.admin) await User.findByIdAndDelete(dept.admin);
+        const deletedOfficers = await User.deleteMany({ _id: { $in: officerUserIds } });
+        
+        let adminDeleted = false;
+        if (dept.admin) {
+            await User.findByIdAndDelete(dept.admin);
+            adminDeleted = true;
+        }
         
         await Department.findByIdAndDelete(id);
 
-        // AUDIT LOG
+        // AUDIT LOG (Detailed)
         await AuditLog.create({
             action: 'DEPT_DELETED',
             actor: req.user._id,
-            // No targetId because it's gone, log name instead
-            details: `Permanently Deleted Department: ${deptName} along with all related data.`
+            details: `Actor: ${req.user.name} (${req.user._id}) deleted Dept: ${deptName} (${deptId}). Cascade Delete: ${deletedComplaints.deletedCount} Complaints, ${deletedOfficers.deletedCount} Officers, Admin Deleted: ${adminDeleted}`
         });
 
         res.json({ success: true, message: "Department deleted." });

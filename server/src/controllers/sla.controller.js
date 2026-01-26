@@ -1,6 +1,7 @@
 import Complaint from '../models/Complaint.model.js';
 import SLAConfig from '../models/SLAConfig.model.js';
 import Department from '../models/Department.model.js';
+import AuditLog from '../models/AuditLog.model.js'; // Added Import
 
 // @desc    Get Real-time SLA Status (Breached vs At Risk)
 // @route   GET /api/sla/tracker
@@ -24,7 +25,7 @@ export const getSLAStatus = async (req, res) => {
     const processedData = complaints.map(ticket => {
         // Find matching rule or default to 48 hours
         const rule = rules.find(r => 
-            r.category === ticket.category && r.priorityLevel === ticket.priority
+            r.category === ticket.category && r.priorityLevel === ticket.priorityLevel
         );
         const allowedHours = rule ? rule.resolutionTimeHours : 48;
 
@@ -44,8 +45,8 @@ export const getSLAStatus = async (req, res) => {
             title: ticket.title,
             department: ticket.department?.name || 'General',
             assignedTo: ticket.assignedOfficer?.name || 'Unassigned',
-            priority: ticket.priority || 'Low', // Ensure priority is passed
-            location: ticket.location || 'Unknown Location', // <--- ADDED LOCATION
+            priority: ticket.priorityLevel || 'Low',
+            location: ticket.location || 'Unknown Location',
             deadline: deadline,
             hoursLeft: diffHours.toFixed(1),
             status: status
@@ -54,6 +55,22 @@ export const getSLAStatus = async (req, res) => {
 
     const breached = processedData.filter(x => x.status === 'Breached');
     const atRisk = processedData.filter(x => x.status === 'At Risk');
+
+    // --- ADDED: SLA AUDIT LOG ---
+    // Logs the check event and details of critical tickets found
+    if (breached.length > 0 || atRisk.length > 0) {
+        // Create a summary string of breached tickets for the log
+        const breachedDetails = breached.map(b => 
+            `[${b.title} (ID:${b._id}) Dept:${b.department}, ${b.hoursLeft}hrs]`
+        ).join(', ');
+
+        await AuditLog.create({
+            action: 'SLA_CHECK',
+            actor: req.user._id,
+            details: `SLA Check by ${req.user.name}. Found ${breached.length} Breached, ${atRisk.length} At Risk. Critical Breaches: ${breachedDetails.substring(0, 500)}${breachedDetails.length > 500 ? '...' : ''}` 
+            // Truncated to avoid massive logs if many breaches exist
+        });
+    }
 
     res.json({
         success: true,
