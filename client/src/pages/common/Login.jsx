@@ -32,7 +32,7 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#0B1120] font-sans text-slate-900 dark:text-white transition-colors duration-300">
+    <div className=" pt-20 min-h-screen bg-slate-50 dark:bg-[#0B1120] font-sans text-slate-900 dark:text-white transition-colors duration-300">
       <Navbar />
 
       <div className="flex items-center justify-center min-h-[calc(100vh-80px)] px-4 sm:px-6 relative">
