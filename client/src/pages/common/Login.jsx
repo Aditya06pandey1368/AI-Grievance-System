@@ -32,19 +32,21 @@ const Login = () => {
   };
 
   return (
-    <div className=" pt-20 min-h-screen bg-slate-50 dark:bg-[#0B1120] font-sans text-slate-900 dark:text-white transition-colors duration-300">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#0B1120] font-sans text-slate-900 dark:text-white transition-colors duration-300 overflow-hidden">
       <Navbar />
 
-      <div className="flex items-center justify-center min-h-[calc(100vh-80px)] px-4 sm:px-6 relative">
+      {/* Container: Added mt-16 to clear navbar, py-12 for vertical spacing on mobile */}
+      <div className="flex items-center justify-center min-h-[calc(100vh-64px)] px-4 sm:px-6 py-12 relative mt-16">
         
-        {/* Subtle Background Glow (Simple & Good) */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-indigo-500/10 dark:bg-indigo-500/5 rounded-full blur-[100px] pointer-events-none" />
+        {/* Responsive Background Glow: Smaller on mobile to prevent overflow/visual clutter */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] sm:w-[600px] sm:h-[600px] bg-indigo-500/10 dark:bg-indigo-500/5 rounded-full blur-[60px] sm:blur-[100px] pointer-events-none" />
 
         <motion.div 
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-8 relative z-10"
+          // Card: Responsive padding (p-6 on mobile, p-8 on desktop)
+          className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 relative z-10"
         >
           <div className="text-center mb-8">
             <h1 className="text-2xl font-bold tracking-tight mb-2">Sign in to your account</h1>
