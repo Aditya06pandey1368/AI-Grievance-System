@@ -1,263 +1,337 @@
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
-import { ArrowRight, Zap, Shield, Brain, CheckCircle, MapPin, AlertTriangle, Layers, Activity, Smartphone } from "lucide-react";
+import { motion, useScroll, useTransform } from "framer-motion";
+import { 
+  ArrowRight, Zap, Shield, Brain, CheckCircle, MapPin, 
+  AlertTriangle, Activity, Globe, Server, Smartphone, 
+  UserCheck, FileText, LayoutDashboard
+} from "lucide-react";
 import Navbar from "../../components/layout/Navbar";
 import Button from "../../components/ui/Button";
-import Footer from "../../components/layout/Footer"; // Importing your new Footer
+import Footer from "../../components/layout/Footer";
 
 const Home = () => {
-  // TODO: Replace with your actual Auth Context
   const isAuthenticated = !!localStorage.getItem("token"); 
+  const { scrollY } = useScroll();
+  const y1 = useTransform(scrollY, [0, 500], [0, 200]);
+  const y2 = useTransform(scrollY, [0, 500], [0, -150]);
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#0B1120] text-slate-900 dark:text-white overflow-hidden selection:bg-primary-500/30">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#0f172a] text-slate-900 dark:text-white font-sans overflow-x-hidden selection:bg-indigo-500/30 transition-colors duration-300">
       <Navbar />
 
-      {/* --- BACKGROUND DECORATION --- */}
-      <div className="absolute inset-0 z-0 opacity-40 dark:opacity-20 pointer-events-none"
-        style={{
-          backgroundImage: "radial-gradient(#6366f1 1px, transparent 1px)",
-          backgroundSize: "32px 32px",
-        }}
-      />
-      <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-primary-500/20 rounded-full blur-[120px] -z-10 animate-pulse" />
-      <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-purple-500/20 rounded-full blur-[120px] -z-10" />
+      {/* ================= HERO SECTION ================= */}
+      <div className="relative min-h-[110vh] flex items-center justify-center pt-20 overflow-hidden">
+        
+        {/* Animated Background Mesh */}
+        <div className="absolute inset-0 z-0">
+            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20"></div>
+            <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-indigo-500/20 dark:bg-indigo-500/10 rounded-full blur-[120px] animate-pulse" />
+            <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-blue-500/20 dark:bg-cyan-500/10 rounded-full blur-[120px]" />
+            {/* Grid Lines */}
+            <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
+        </div>
 
-      {/* --- HERO SECTION --- */}
-      <section className="relative min-h-screen flex items-center justify-center pt-20 pb-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto z-10">
-        <div className="grid lg:grid-cols-2 gap-12 lg:gap-8 items-center w-full">
-          
-          {/* LEFT: TEXT CONTENT */}
-          <motion.div
-            initial={{ opacity: 0, x: -50 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
-            className="text-center lg:text-left flex flex-col items-center lg:items-start"
-          >
+        <div className="relative z-10 max-w-7xl mx-auto px-6 grid lg:grid-cols-2 gap-16 items-center">
+            
+            {/* Left Content */}
             <motion.div 
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 0.2 }}
-              className="px-4 py-1.5 rounded-full bg-white/50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 backdrop-blur-md text-primary-600 dark:text-primary-400 text-sm font-bold tracking-wide uppercase mb-6 inline-flex items-center gap-2 shadow-sm"
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8 }}
             >
-              <span className="w-2 h-2 rounded-full bg-green-500 animate-ping" />
-              AI-Powered Governance
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/60 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 backdrop-blur-md mb-8 shadow-sm">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                    </span>
+                    <span className="text-xs font-bold tracking-widest text-slate-600 dark:text-slate-300 uppercase">System Operational</span>
+                </div>
+
+                <h1 className="text-6xl sm:text-7xl lg:text-8xl font-black tracking-tighter leading-[1.1] mb-8 text-slate-900 dark:text-white">
+                    The <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-500 dark:from-indigo-400 dark:via-cyan-400 dark:to-emerald-400">Future</span> of <br /> 
+                    Civic Response.
+                </h1>
+
+                <p className="text-xl text-slate-600 dark:text-slate-400 max-w-xl leading-relaxed mb-10 border-l-4 border-indigo-500 pl-6">
+                    A smart grievance system that reads your complaint, finds the right department, and assigns an officer instantly.
+                </p>
+
+                <div className="flex flex-wrap gap-4">
+                    <Link to={isAuthenticated ? "/dashboard" : "/register"}>
+                        <Button className="h-16 px-10 text-xl font-bold rounded-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-[0_10px_40px_-10px_rgba(79,70,229,0.4)] transition-all transform hover:scale-105">
+                            {isAuthenticated ? "Go to Dashboard" : "Get Started"}
+                        </Button>
+                    </Link>
+                    <Link to="/about">
+                        <Button variant="outline" className="h-16 px-10 text-xl font-bold rounded-full bg-white/50 dark:bg-slate-800/50 border-slate-300 dark:border-slate-600 hover:bg-white dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 backdrop-blur-sm">
+                            Live Demo
+                        </Button>
+                    </Link>
+                </div>
+
+                {/* Mini Stats */}
+                <div className="mt-12 flex gap-8 border-t border-slate-200 dark:border-slate-800 pt-8">
+                    <div>
+                        <h4 className="text-3xl font-bold text-slate-900 dark:text-white">Instant</h4>
+                        <p className="text-xs text-slate-500 dark:text-slate-500 uppercase tracking-wider">Classification</p>
+                    </div>
+                    <div>
+                        <h4 className="text-3xl font-bold text-slate-900 dark:text-white">100%</h4>
+                        <p className="text-xs text-slate-500 dark:text-slate-500 uppercase tracking-wider">Automated</p>
+                    </div>
+                    <div>
+                        <h4 className="text-3xl font-bold text-slate-900 dark:text-white">24/7</h4>
+                        <p className="text-xs text-slate-500 dark:text-slate-500 uppercase tracking-wider">Availability</p>
+                    </div>
+                </div>
             </motion.div>
 
-            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight mb-6 leading-[1.1]">
-              Solve Issues at the <br />
-              <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary-500 via-purple-500 to-pink-500 animate-gradient-x">
-                Speed of AI
-              </span>
-            </h1>
+            {/* Right 3D Visual */}
+            <div className="relative h-[600px] hidden lg:block perspective-[2000px]">
+                {/* Floating Elements controlled by Scroll */}
+                <motion.div style={{ y: y1 }} className="absolute top-0 right-10 z-20">
+                    <div className="bg-white/90 dark:bg-slate-800/80 backdrop-blur-xl p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-2xl w-64 transform rotate-y-[-20deg] rotate-x-[10deg]">
+                        <div className="flex items-center gap-4 mb-4">
+                            <div className="p-3 bg-red-100 dark:bg-red-500/20 rounded-xl text-red-600 dark:text-red-400"><AlertTriangle className="w-6 h-6" /></div>
+                            <div>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase">Priority: High</p>
+                                <p className="font-bold text-slate-900 dark:text-white">Water Leakage</p>
+                            </div>
+                        </div>
+                        <div className="h-2 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                            <motion.div 
+                                initial={{ width: 0 }} 
+                                animate={{ width: "90%" }} 
+                                transition={{ duration: 1.5, repeat: Infinity }}
+                                className="h-full bg-red-500" 
+                            />
+                        </div>
+                    </div>
+                </motion.div>
 
-            <p className="text-lg sm:text-xl text-slate-600 dark:text-slate-400 max-w-2xl mb-10 leading-relaxed">
-              Report civic issues in seconds. Our AI automatically classifies, prioritizes, and routes complaints to the nearest officer instantly.
-            </p>
-            
-            <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-              {isAuthenticated ? (
-                <Link to="/dashboard">
-                  <Button className="h-14 px-8 text-lg rounded-full w-full sm:w-auto shadow-lg shadow-primary-500/25 hover:shadow-primary-500/40 transition-all">
-                    Go to Dashboard <ArrowRight className="ml-2 w-5 h-5" />
-                  </Button>
-                </Link>
-              ) : (
-                <Link to="/register">
-                  <Button className="h-14 px-8 text-lg rounded-full w-full sm:w-auto shadow-lg shadow-primary-500/25 hover:shadow-primary-500/40 transition-all">
-                    Get Started Now <ArrowRight className="ml-2 w-5 h-5" />
-                  </Button>
-                </Link>
-              )}
-              
-              <Link to="/about">
-                <Button variant="outline" className="h-14 px-8 text-lg rounded-full w-full sm:w-auto bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm">
-                  How it Works
-                </Button>
-              </Link>
+                <motion.div style={{ y: y2 }} className="absolute bottom-20 left-0 z-30">
+                    <div className="bg-white/90 dark:bg-slate-800/80 backdrop-blur-xl p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-2xl w-72 transform rotate-y-[20deg] rotate-x-[5deg]">
+                        <div className="flex items-center gap-4 mb-4">
+                            <div className="p-3 bg-green-100 dark:bg-green-500/20 rounded-xl text-green-600 dark:text-green-400"><CheckCircle className="w-6 h-6" /></div>
+                            <div>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase">Action Taken</p>
+                                <p className="font-bold text-slate-900 dark:text-white">Officer Assigned</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                            <div className="w-6 h-6 rounded-full bg-slate-300 dark:bg-slate-600 flex items-center justify-center font-bold text-[10px]">A</div>
+                            <span>Assigned to Ward 12 Officer</span>
+                        </div>
+                    </div>
+                </motion.div>
+
+                {/* Central Sphere */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="relative w-96 h-96">
+                        <div className="absolute inset-0 rounded-full border border-indigo-500/30 dark:border-indigo-500/30 animate-[spin_10s_linear_infinite]" />
+                        <div className="absolute inset-4 rounded-full border border-blue-500/30 dark:border-cyan-500/30 animate-[spin_15s_linear_infinite_reverse]" />
+                        <div className="absolute inset-0 rounded-full bg-gradient-to-br from-indigo-500/10 to-blue-500/10 blur-3xl animate-pulse" />
+                        <div className="absolute inset-0 flex items-center justify-center">
+                            <Brain className="w-32 h-32 text-indigo-600 dark:text-indigo-400 drop-shadow-[0_0_30px_rgba(99,102,241,0.5)]" />
+                        </div>
+                    </div>
+                </div>
             </div>
-            
-            <div className="mt-10 flex items-center gap-6 text-sm font-medium text-slate-500 dark:text-slate-400">
-              <div className="flex -space-x-3">
-                 {[1,2,3,4].map((i) => (
-                   <div key={i} className="w-8 h-8 rounded-full border-2 border-white dark:border-slate-900 bg-slate-200 dark:bg-slate-700" />
-                 ))}
-              </div>
-              <p>Trusted by 10k+ Citizens</p>
-            </div>
-          </motion.div>
-
-          {/* RIGHT: 3D ILLUSTRATION */}
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-            className="relative hidden lg:flex items-center justify-center h-[600px] perspective-1000"
-          >
-              <div className="relative w-full max-w-md transform transition-transform duration-500 hover:rotate-y-6 hover:rotate-x-6 preserve-3d">
-                 {/* Floating Elements (Corrected Positions) 
-                 <motion.div 
-                   animate={{ y: [0, -15, 0] }} 
-                   transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                   className="absolute -top-20 -right-20 z-0"
-                 >
-                   <div className="bg-red-500/10 p-4 rounded-full backdrop-blur-md border border-red-500/20 shadow-lg">
-                     <MapPin className="w-12 h-12 text-red-500" />
-                   </div>
-                 </motion.div>
-
-                 <motion.div 
-                   animate={{ y: [0, 15, 0] }} 
-                   transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-                   className="absolute bottom-10 -left-20 z-20"
-                 >
-                   <div className="bg-amber-500/10 p-3 rounded-2xl backdrop-blur-md border border-amber-500/20 shadow-xl">
-                     <AlertTriangle className="w-10 h-10 text-amber-500" />
-                   </div>
-                 </motion.div>
-                 */}
-
-                 {/* MAIN CARD */}
-                 <div className="relative bg-white dark:bg-slate-800/90 rounded-3xl p-6 border border-slate-200 dark:border-slate-700 shadow-2xl backdrop-blur-xl z-10 transform rotate-y-12 rotate-z-2">
-                   <div className="flex items-center justify-between mb-6">
-                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600">
-                          <Shield className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <h3 className="font-bold text-slate-900 dark:text-white">New Report #429</h3>
-                          <p className="text-xs text-slate-500">Just now • Sector 62, Noida</p>
-                        </div>
-                     </div>
-                     <span className="px-2 py-1 rounded-md bg-red-100 text-red-700 text-xs font-bold">High Priority</span>
-                   </div>
-
-                   <div className="space-y-3 mb-6">
-                     <div className="h-32 rounded-xl bg-slate-100 dark:bg-slate-700/50 w-full relative overflow-hidden group border border-slate-200 dark:border-slate-600">
-                        <div className="absolute inset-0 bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-600 opacity-50" />
-                        <div className="absolute inset-0 flex items-center justify-center text-slate-500 dark:text-slate-300 text-sm font-medium tracking-wide">
-                          AI Processing...
-                        </div>
-                        <motion.div 
-                          animate={{ top: ["0%", "100%", "0%"] }}
-                          transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-                          className="absolute left-0 right-0 h-[2px] bg-primary-500 shadow-[0_0_20px_rgba(99,102,241,0.6)]"
-                        />
-                     </div>
-                     <div className="h-2 w-3/4 rounded-full bg-slate-100 dark:bg-slate-700" />
-                     <div className="h-2 w-1/2 rounded-full bg-slate-100 dark:bg-slate-700" />
-                   </div>
-
-                   <div className="bg-primary-50 dark:bg-primary-900/20 rounded-xl p-4 flex items-center gap-3 border border-primary-100 dark:border-primary-800">
-                     <Brain className="w-6 h-6 text-primary-600" />
-                     <div>
-                       <p className="text-sm font-bold text-primary-700 dark:text-primary-300">AI Assigned Officer</p>
-                       <p className="text-xs text-primary-600/80 dark:text-primary-400/80">Routing complete in 0.4s</p>
-                     </div>
-                     <CheckCircle className="ml-auto w-5 h-5 text-primary-600" />
-                   </div>
-                 </div>
-
-                 <div className="absolute inset-0 bg-gradient-to-tr from-purple-500 to-pink-500 rounded-3xl transform translate-x-4 translate-y-4 -z-10 opacity-40 blur-sm" />
-              </div>
-          </motion.div>
         </div>
-      </section>
+      </div>
 
-      {/* --- FEATURES SECTION (REVAMPED) --- */}
-      <section className="relative py-32 bg-slate-50 dark:bg-[#0B1120]">
-        
-        {/* Section Background Effects */}
-        <div className="absolute inset-0 bg-white/50 dark:bg-slate-900/50 backdrop-blur-3xl skew-y-1 transform origin-top-left -z-10" />
-        
-        <div className="max-w-7xl mx-auto px-4">
-            <div className="text-center mb-20">
-              <motion.span 
-                initial={{ opacity: 0, y: 10 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                className="text-primary-500 font-bold tracking-wider uppercase text-sm"
-              >
-                Powerful Capabilities
-              </motion.span>
-              <motion.h2 
-                initial={{ opacity: 0, y: 10 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.1 }}
-                className="text-4xl md:text-5xl font-extrabold text-slate-900 dark:text-white mt-3 mb-6"
-              >
-                Why Grievance<span className="text-primary-500">AI</span>?
-              </motion.h2>
-              <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto leading-relaxed">
-                We combine deep learning with geolocation data to bridge the gap between citizens and administration faster than ever before.
-              </p>
+      {/* ================= BENTO GRID FEATURES ================= */}
+      <section className="py-32 relative bg-white dark:bg-[#0B1120] transition-colors duration-300">
+        <div className="max-w-[1400px] mx-auto px-6">
+            <div className="mb-20 max-w-3xl">
+                <span className="text-indigo-600 dark:text-indigo-400 font-bold tracking-widest uppercase">System Capabilities</span>
+                <h2 className="text-5xl md:text-6xl font-black text-slate-900 dark:text-white mt-4 mb-6">Built for Efficiency. <br/>Powered by AI.</h2>
+                <p className="text-slate-600 dark:text-slate-400 text-xl">An intelligent ecosystem designed to process complaints instantly and route them accurately.</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative z-10">
-                <FeatureCard 
-                  icon={<Brain className="w-8 h-8 text-white" />}
-                  color="bg-purple-500"
-                  title="AI Classification"
-                  desc="Our NLP models automatically categorize complaints (Fire, Road, Water) with 99% accuracy."
-                  delay={0}
-                />
-                <FeatureCard 
-                  icon={<Zap className="w-8 h-8 text-white" />}
-                  color="bg-yellow-500"
-                  title="Instant Routing"
-                  desc="Location-based algorithms assign the nearest available officer in milliseconds."
-                  delay={0.2}
-                />
-                <FeatureCard 
-                  icon={<Shield className="w-8 h-8 text-white" />}
-                  color="bg-green-500"
-                  title="Fraud Prevention"
-                  desc="Trust Score system filters out spam and fake reports to keep the system efficient."
-                  delay={0.4}
-                />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 auto-rows-[300px]">
+                
+                {/* Card 1: Large Span (Text Analysis) */}
+                <motion.div 
+                    whileHover={{ scale: 0.98 }}
+                    className="md:col-span-2 bg-slate-50 dark:bg-slate-900 rounded-[2rem] p-10 border border-slate-200 dark:border-slate-800 relative overflow-hidden group shadow-lg"
+                >
+                    <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-indigo-500/5 dark:bg-indigo-500/10 rounded-full blur-[80px] group-hover:bg-indigo-500/10 dark:group-hover:bg-indigo-500/20 transition-all duration-500" />
+                    <FileText className="w-12 h-12 text-indigo-600 dark:text-indigo-500 mb-6" />
+                    <h3 className="text-3xl font-bold text-slate-900 dark:text-white mb-4">Smart Text Analysis</h3>
+                    <p className="text-slate-600 dark:text-slate-400 text-lg max-w-md">
+                        Our AI scans the text description of your complaint to automatically detect the issue type (e.g., Road, Electricity) and assign a priority level.
+                    </p>
+                    <div className="absolute bottom-10 right-10 flex gap-2">
+                        <span className="px-3 py-1 bg-white dark:bg-slate-800 rounded-lg text-xs font-mono text-indigo-600 dark:text-indigo-400 border border-slate-200 dark:border-slate-700 shadow-sm">NLP</span>
+                        <span className="px-3 py-1 bg-white dark:bg-slate-800 rounded-lg text-xs font-mono text-indigo-600 dark:text-indigo-400 border border-slate-200 dark:border-slate-700 shadow-sm">Automated</span>
+                    </div>
+                </motion.div>
+
+                {/* Card 2: Zone Routing */}
+                <motion.div 
+                    whileHover={{ scale: 0.98 }}
+                    className="md:col-span-1 bg-slate-50 dark:bg-slate-900 rounded-[2rem] p-8 border border-slate-200 dark:border-slate-800 relative overflow-hidden group shadow-lg"
+                >
+                    <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-blue-500/10 dark:bg-cyan-500/20 rounded-full blur-[50px]" />
+                    <MapPin className="w-12 h-12 text-blue-600 dark:text-cyan-500 mb-6" />
+                    <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-3">Zone-Based Routing</h3>
+                    <p className="text-slate-600 dark:text-slate-400">Complaints are automatically routed to the specific officer assigned to your location zone.</p>
+                </motion.div>
+
+                {/* Card 3: Trust Score */}
+                <motion.div 
+                    whileHover={{ scale: 0.98 }}
+                    className="md:col-span-1 bg-slate-50 dark:bg-slate-900 rounded-[2rem] p-8 border border-slate-200 dark:border-slate-800 relative overflow-hidden group shadow-lg"
+                >
+                    <div className="absolute -top-10 -left-10 w-32 h-32 bg-emerald-500/10 dark:bg-emerald-500/20 rounded-full blur-[50px]" />
+                    <Shield className="w-12 h-12 text-emerald-600 dark:text-emerald-500 mb-6" />
+                    <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-3">Trust Score</h3>
+                    <p className="text-slate-600 dark:text-slate-400">System filters spam and fake reports using a user reputation scoring mechanism.</p>
+                </motion.div>
+
+                {/* Card 4: SLA */}
+                <motion.div 
+                    whileHover={{ scale: 0.98 }}
+                    className="md:col-span-2 bg-gradient-to-br from-indigo-50 to-white dark:from-indigo-900/30 dark:to-slate-900 rounded-[2rem] p-10 border border-indigo-100 dark:border-indigo-500/30 relative overflow-hidden group shadow-lg"
+                >
+                    <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10"></div>
+                    <Activity className="w-12 h-12 text-indigo-600 dark:text-white mb-6" />
+                    <h3 className="text-3xl font-bold text-slate-900 dark:text-white mb-4">Real-Time SLA Monitoring</h3>
+                    <p className="text-slate-600 dark:text-slate-300 text-lg max-w-lg">
+                        Officers have strict deadlines. If a ticket breaches the Service Level Agreement (SLA), it is automatically escalated to higher authorities.
+                    </p>
+                    <div className="mt-8 h-2 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                        <div className="h-full bg-gradient-to-r from-indigo-500 to-blue-400 w-[70%] animate-pulse" />
+                    </div>
+                </motion.div>
+
             </div>
         </div>
       </section>
 
-      {/* --- EXTERNAL FOOTER COMPONENT --- */}
+      {/* ================= WORKFLOW STEPS ================= */}
+      <section className="py-32 bg-slate-100 dark:bg-slate-950 relative overflow-hidden transition-colors duration-300">
+          {/* Connecting Line */}
+          <div className="absolute left-1/2 top-0 bottom-0 w-[1px] bg-gradient-to-b from-transparent via-slate-300 dark:via-slate-700 to-transparent hidden md:block" />
+
+          <div className="max-w-6xl mx-auto px-6 relative z-10">
+              <div className="text-center mb-24">
+                  <h2 className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white">How It Works</h2>
+                  <p className="text-slate-600 dark:text-slate-400 mt-4">From problem to solution in 4 simple steps.</p>
+              </div>
+
+              <div className="space-y-24">
+                  <WorkflowStep 
+                    number="01" 
+                    title="You Report" 
+                    desc="Fill the form with location and issue details. Use clear text descriptions."
+                    icon={<Smartphone className="w-8 h-8" />}
+                    align="left"
+                  />
+                  <WorkflowStep 
+                    number="02" 
+                    title="AI Processing" 
+                    desc="Our AI reads your text to determine Department (Road/Water) and Priority."
+                    icon={<Server className="w-8 h-8" />}
+                    align="right"
+                  />
+                  <WorkflowStep 
+                    number="03" 
+                    title="Officer Assigned" 
+                    desc="Ticket is routed to the officer managing your zone. SLA timer starts."
+                    icon={<UserCheck className="w-8 h-8" />}
+                    align="left"
+                  />
+                  <WorkflowStep 
+                    number="04" 
+                    title="Resolution" 
+                    desc="Officer fixes the issue. You get notified and can rate the service."
+                    icon={<CheckCircle className="w-8 h-8" />}
+                    align="right"
+                  />
+              </div>
+          </div>
+      </section>
+
+      {/* ================= CTA SECTION ================= */}
+      <section className="py-32 relative">
+          <div className="absolute inset-0 bg-indigo-900 dark:bg-black">
+              <div className="absolute inset-0 opacity-20 bg-[url('https://grainy-gradients.vercel.app/noise.svg')]"></div>
+              <div className="absolute bottom-0 left-0 w-full h-[500px] bg-gradient-to-t from-slate-900 to-transparent"></div>
+          </div>
+          
+          <div className="relative z-10 max-w-4xl mx-auto text-center px-6">
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                whileInView={{ scale: 1, opacity: 1 }}
+                viewport={{ once: true }}
+              >
+                  <h2 className="text-5xl md:text-7xl font-black mb-8 leading-tight text-white">
+                      Ready to Transform <br/> Your City?
+                  </h2>
+                  <p className="text-2xl text-indigo-200 mb-12 font-light">
+                      Join the revolution of transparent, efficient governance.
+                  </p>
+                  
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
+                      <Link to={isAuthenticated ? "/dashboard" : "/register"}>
+                          <Button className="h-20 px-12 text-2xl font-bold rounded-full bg-white text-indigo-950 hover:bg-indigo-50 hover:scale-105 shadow-2xl transition-all">
+                              {isAuthenticated ? "Go to Dashboard" : "Join Now"}
+                          </Button>
+                      </Link>
+                      {!isAuthenticated && (
+                        <Link to="/login">
+                            <Button variant="outline" className="h-20 px-12 text-2xl font-bold rounded-full border-indigo-400 text-indigo-300 hover:bg-indigo-900/50 hover:text-white transition-all">
+                                Login
+                            </Button>
+                        </Link>
+                      )}
+                  </div>
+              </motion.div>
+          </div>
+      </section>
+
+      {/* --- FOOTER --- */}
       <Footer />
     </div>
   );
 };
 
-// 3D Tilt Feature Card
-const FeatureCard = ({ icon, color, title, desc, delay }) => (
-  <motion.div 
-    initial={{ opacity: 0, y: 40 }}
-    whileInView={{ opacity: 1, y: 0 }}
-    viewport={{ once: true }}
-    transition={{ duration: 0.7, delay }}
-    whileHover={{ y: -10 }}
-    className="group relative p-8 rounded-[2rem] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl transition-all duration-300 overflow-hidden"
-  >
-    {/* Hover Gradient Border Effect */}
-    <div className="absolute inset-0 bg-gradient-to-br from-primary-500/20 to-purple-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-    
-    {/* Background Blob */}
-    <div className={`absolute -right-10 -top-10 w-32 h-32 rounded-full ${color} opacity-10 group-hover:scale-150 transition-transform duration-500 ease-out`} />
+// --- HELPER COMPONENT FOR WORKFLOW ---
+const WorkflowStep = ({ number, title, desc, icon, align }) => {
+    const isLeft = align === "left";
+    return (
+        <motion.div 
+            initial={{ opacity: 0, x: isLeft ? -50 : 50 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className={`flex flex-col md:flex-row items-center gap-10 ${isLeft ? '' : 'md:flex-row-reverse'}`}
+        >
+            <div className="w-full md:w-1/2 flex justify-center md:justify-end px-10">
+                <div className={`text-${isLeft ? 'right' : 'left'}`}>
+                    <h3 className="text-4xl font-bold mb-4 flex items-center gap-4 justify-end text-slate-900 dark:text-white">
+                        {isLeft && <span>{title}</span>}
+                        <div className="w-16 h-16 rounded-2xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-500/30 text-white">
+                            {icon}
+                        </div>
+                        {!isLeft && <span>{title}</span>}
+                    </h3>
+                    <p className="text-slate-600 dark:text-slate-400 text-lg leading-relaxed">{desc}</p>
+                </div>
+            </div>
+            
+            {/* Center Node */}
+            <div className="relative hidden md:flex items-center justify-center w-12">
+                <div className="w-12 h-12 rounded-full bg-white dark:bg-slate-900 border-4 border-slate-200 dark:border-slate-700 z-10 flex items-center justify-center font-mono font-bold text-slate-500 dark:text-slate-400 shadow-sm">
+                    {number}
+                </div>
+            </div>
 
-    <div className="relative z-10">
-      <div className={`w-16 h-16 rounded-2xl ${color} shadow-lg flex items-center justify-center mb-8 transform group-hover:rotate-6 transition-transform duration-300`}>
-        {icon}
-      </div>
-      
-      <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-4 group-hover:text-primary-500 transition-colors">
-        {title}
-      </h3>
-      
-      <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
-        {desc}
-      </p>
-
-      
-    </div>
-  </motion.div>
-);
+            <div className="w-full md:w-1/2 px-10" />
+        </motion.div>
+    );
+};
 
 export default Home;
