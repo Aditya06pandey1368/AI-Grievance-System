@@ -7,7 +7,6 @@ import {
 import Navbar from "../../components/layout/Navbar";
 import Footer from "../../components/layout/Footer";
 
-// Moved array logic here, using imported 'Clock' to fix ReferenceError
 const faqs = [
   {
     category: "General & Filing",
@@ -92,11 +91,16 @@ const Faq = () => {
               </div>
               <h2 className="text-3xl font-bold mb-4">Still have questions?</h2>
               <p className="text-slate-500 dark:text-slate-400 mb-8">
-                  Can't find the answer you're looking for? Reach out to our support team.
+                  Can't find the answer you're looking for? Reach out to our support team directly.
               </p>
-              <button className="px-8 py-3 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold hover:opacity-90 transition-opacity">
+              
+              {/* UPDATED BUTTON WITH MAILTO LINK */}
+              <a 
+                href="mailto:aaditya06pandey@gmail.com"
+                className="inline-block px-8 py-3 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold hover:opacity-90 transition-opacity shadow-lg"
+              >
                   Contact Support
-              </button>
+              </a>
           </div>
       </section>
 
