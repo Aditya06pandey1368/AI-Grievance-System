@@ -1,4 +1,3 @@
-// complaint.controller.js
 import axios from 'axios';
 import Complaint from '../models/Complaint.model.js';
 import User from '../models/User.model.js';
@@ -6,18 +5,74 @@ import AuditLog from '../models/AuditLog.model.js';
 import Officer from '../models/Officer.model.js';
 import Department from '../models/Department.model.js';
 
+// Helper to check same day
+const isToday = (date) => {
+    const today = new Date();
+    return date.getDate() === today.getDate() &&
+           date.getMonth() === today.getMonth() &&
+           date.getFullYear() === today.getFullYear();
+};
+
 // @desc    Submit a new grievance
 // @route   POST /api/complaints
 export const createComplaint = async (req, res) => {
   try {
-    const { title, description, location, zone } = req.body;
+    const { title, description, location, zone, forceSubmit } = req.body;
     const userId = req.user._id;
 
     if (!zone || !title || !location) {
       return res.status(400).json({ success: false, message: "Zone is required." });
     }
 
-    // --- 1. CALL PYTHON AI SERVICE ---
+    // --- 0. DAILY LIMIT CHECK (Max 3 per day) ---
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    
+    const dailyCount = await Complaint.countDocuments({
+        citizen: userId,
+        createdAt: { $gte: todayStart }
+    });
+
+    if (dailyCount >= 9) {
+        return res.status(429).json({
+            success: false,
+            message: "Daily limit reached. You can only submit 3 complaints per day."
+        });
+    }
+
+    // --- 0.5 DUPLICATE CHECK (Semantic Search) ---
+    // Only run if user hasn't confirmed the warning yet (forceSubmit is false)
+    if (!forceSubmit) {
+        // Fetch ACTIVE complaints in the SAME ZONE to compare
+        const nearbyComplaints = await Complaint.find({
+            zone: zone,
+            status: { $in: ['submitted', 'assigned', 'in_progress'] } // Only active ones
+        }).select('description');
+
+        const existingTexts = nearbyComplaints.map(c => c.description);
+
+        if (existingTexts.length > 0) {
+            try {
+                const dupResponse = await axios.post('http://localhost:8000/check_duplicate', {
+                    new_complaint: description,
+                    existing_complaints: existingTexts
+                });
+
+                if (dupResponse.data.is_duplicate) {
+                    return res.status(200).json({
+                        success: false,
+                        isDuplicateWarn: true, // Frontend triggers Modal
+                        similarityScore: dupResponse.data.score,
+                        message: "Warning: Similar complaint detected in this zone. Submitting duplicates may lower your Trust Score."
+                    });
+                }
+            } catch (err) {
+                console.error("AI Duplicate Check Failed (Continuing...):", err.message);
+            }
+        }
+    }
+
+    // --- 1. CALL PYTHON AI SERVICE (Classification) ---
     let aiCategory = 'Other';
     let aiPriorityLevel = 'Medium';
     let aiPriorityScore = 50;
@@ -57,11 +112,9 @@ export const createComplaint = async (req, res) => {
         });
 
         if (matchedDept) {
-            // Department Exists -> Keep AI Category
             targetDeptId = matchedDept._id;
             matchedDeptName = matchedDept.name;
         } else {
-            // Department DOES NOT Exist -> Override to 'Other'
             console.log(`⚠️ Dept '${aiCategory}' not found in DB. Falling back to 'Other'.`);
             aiCategory = 'Other';
         }

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { MapPin, FileText, AlertTriangle, CheckCircle } from "lucide-react";
+import { MapPin, FileText, AlertTriangle, CheckCircle, Copy } from "lucide-react";
 import { toast } from "react-hot-toast";
 
 import Navbar from "../../components/layout/Navbar";
@@ -19,27 +19,51 @@ const SubmitComplaint = () => {
     location: "",
     zone: "" 
   });
+  
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null); 
-  const [showWarning, setShowWarning] = useState(false);
+  
+  // Modal States
+  const [showStrictWarning, setShowStrictWarning] = useState(false);
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+  
+  // Data for Duplicate Warning
+  const [duplicateData, setDuplicateData] = useState({ message: "", score: 0 });
 
+  // 1. First Button Click: Validates and shows Strict Policy Warning
   const handlePreSubmit = (e) => {
     e.preventDefault();
     if (!formData.title || !formData.description || !formData.location || !formData.zone) {
       toast.error("Please fill all fields including Zone");
       return;
     }
-    setShowWarning(true);
+    setShowStrictWarning(true);
   };
 
-  const confirmAndSubmit = async () => {
-    setShowWarning(false);
+  // 2. Main Submission Logic (Handles both normal and force submit)
+  const submitToAPI = async (force = false) => {
+    setShowStrictWarning(false); // Close strict warning if open
+    setShowDuplicateModal(false); // Close duplicate warning if open
     setLoading(true);
 
     try {
-      // Just sending JSON now. No FormData.
-      const res = await api.post('/complaints', formData);
+      // Add forceSubmit flag if needed
+      const payload = { ...formData, forceSubmit: force };
+      
+      const res = await api.post('/complaints', payload);
 
+      // --- DUPLICATE CHECK ---
+      if (res.data.isDuplicateWarn) {
+        setDuplicateData({
+          message: res.data.message,
+          score: res.data.similarityScore
+        });
+        setLoading(false);
+        setShowDuplicateModal(true); // Open the second modal
+        return; 
+      }
+
+      // --- SUCCESS ---
       setTimeout(() => {
         setResult(res.data.data); 
         setLoading(false);
@@ -56,8 +80,9 @@ const SubmitComplaint = () => {
     <div className="min-h-screen bg-slate-50 dark:bg-[#0f172a] transition-colors font-sans relative">
       <Navbar />
 
+      {/* --- MODAL 1: STRICT POLICY WARNING --- */}
       <AnimatePresence>
-        {showWarning && (
+        {showStrictWarning && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
                 <motion.div 
                     initial={{ scale: 0.9, opacity: 0 }}
@@ -75,8 +100,42 @@ const SubmitComplaint = () => {
                             False reporting will result in an immediate ID ban.
                         </p>
                         <div className="pt-4 flex gap-3">
-                            <button onClick={() => setShowWarning(false)} className="flex-1 py-3 rounded-xl border border-slate-300 dark:border-slate-600 font-bold dark:text-white">Cancel</button>
-                            <button onClick={confirmAndSubmit} className="flex-1 py-3 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700 shadow-lg">Confirm & Submit</button>
+                            <button onClick={() => setShowStrictWarning(false)} className="flex-1 py-3 rounded-xl border border-slate-300 dark:border-slate-600 font-bold dark:text-white">Cancel</button>
+                            <button onClick={() => submitToAPI(false)} className="flex-1 py-3 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700 shadow-lg">Confirm & Submit</button>
+                        </div>
+                    </div>
+                </motion.div>
+            </div>
+        )}
+      </AnimatePresence>
+
+      {/* --- MODAL 2: DUPLICATE FOUND WARNING --- */}
+      <AnimatePresence>
+        {showDuplicateModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                <motion.div 
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.9, opacity: 0 }}
+                    className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-2xl shadow-2xl border-2 border-orange-500/50 overflow-hidden"
+                >
+                    <div className="bg-orange-50 dark:bg-orange-900/20 p-6 text-center border-b border-orange-100 dark:border-orange-900/50">
+                        <Copy className="w-12 h-12 text-orange-600 mx-auto mb-3" />
+                        <h3 className="text-2xl font-bold text-orange-700 dark:text-orange-400">Duplicate Detected</h3>
+                    </div>
+                    <div className="p-6 space-y-4">
+                        <div className="bg-orange-100 dark:bg-orange-900/40 p-3 rounded-lg text-center font-bold text-orange-800 dark:text-orange-200">
+                             Match Score: {(duplicateData.score * 100).toFixed(0)}%
+                        </div>
+                        <p className="text-slate-600 dark:text-slate-300">
+                            {duplicateData.message}
+                        </p>
+                        <p className="text-sm text-slate-500 italic">
+                            (Officers are likely already working on this. Submitting again may lower your Trust Score.)
+                        </p>
+                        <div className="pt-4 flex gap-3">
+                            <button onClick={() => setShowDuplicateModal(false)} className="flex-1 py-3 rounded-xl border border-slate-300 dark:border-slate-600 font-bold dark:text-white">Cancel</button>
+                            <button onClick={() => submitToAPI(true)} className="flex-1 py-3 rounded-xl bg-orange-600 text-white font-bold hover:bg-orange-700 shadow-lg">Submit Anyway</button>
                         </div>
                     </div>
                 </motion.div>
@@ -99,6 +158,7 @@ const SubmitComplaint = () => {
                   <p className="text-center mt-4 text-indigo-500 font-bold animate-pulse">Analyzing Content...</p>
                 </motion.div>
               ) : result ? (
+                // SUCCESS VIEW
                 <motion.div key="result" initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="space-y-8 text-center p-6">
                   <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto text-green-600 shadow-lg">
                     <CheckCircle className="w-10 h-10" />
@@ -120,6 +180,7 @@ const SubmitComplaint = () => {
                   <Button onClick={() => navigate('/dashboard')} className="w-full">Go to Dashboard</Button>
                 </motion.div>
               ) : (
+                // FORM VIEW
                 <motion.form key="form" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onSubmit={handlePreSubmit} className="space-y-6 p-2">
                   <Input label="Issue Title" placeholder="e.g. Theft at house" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} />
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
