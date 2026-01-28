@@ -6,26 +6,24 @@ from pydantic import BaseModel
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 
-# 1. Load the Classification Model
+# 1. Load Models
 print("Loading Classification Model...")
 model = joblib.load("complaint_model.pkl")
 
-# 2. Load the Semantic Search Model (Downloads once, then runs fast)
 print("Loading Semantic Search Model...")
 semantic_model = SentenceTransformer('all-MiniLM-L6-v2')
 print("✅ All Models Loaded!")
 
 app = FastAPI()
 
-# --- Input Schemas ---
 class ComplaintInput(BaseModel):
     text: str
 
 class DuplicateCheckInput(BaseModel):
     new_complaint: str
-    existing_complaints: list[str]  # List of descriptions
+    existing_complaints: list[str]
 
-# --- SEVERITY LOGIC (Unchanged) ---
+# --- SEVERITY LOGIC ---
 def analyze_height_severity(text):
     pattern = r"(\d+)(?:st|nd|rd|th)?\s*(?:floor|storey|story|building)"
     match = re.search(pattern, text.lower())
@@ -88,33 +86,38 @@ def predict_complaint(data: ComplaintInput):
         "ai_confidence": f"{confidence:.2f}"
     }
 
-# NEW: Duplicate Check Endpoint
 @app.post("/check_duplicate")
 def check_duplicate(data: DuplicateCheckInput):
     try:
         if not data.existing_complaints:
             return {"is_duplicate": False, "score": 0.0}
 
-        # 1. Vectorize New Complaint
+        # 1. Vectorize
         new_vector = semantic_model.encode([data.new_complaint])
-
-        # 2. Vectorize Existing Complaints
         existing_vectors = semantic_model.encode(data.existing_complaints)
 
-        # 3. Calculate Similarity
+        # 2. Calculate Similarity
         scores = cosine_similarity(new_vector, existing_vectors)[0]
         max_score = float(np.max(scores))
 
-        # 4. Threshold (0.75 means 75% similar meaning)
-        is_dup = max_score > 0.60
+        # --- DEBUG PRINT ---
+        # Watch your Python Terminal when you click Submit!
+        print(f"\n🔍 DUPLICATE CHECK:")
+        print(f"   New Text: {data.new_complaint}")
+        print(f"   Max Similarity Score: {max_score:.4f}")
+        print(f"   Result: {'DUPLICATE' if max_score > 0.55 else 'UNIQUE'}\n")
+
+        # --- THRESHOLD SET TO 0.55 (55%) ---
+        is_dup = max_score > 0.55
 
         return {
             "is_duplicate": is_dup,
             "score": max_score
         }
     except Exception as e:
+        print(f"Error: {e}")
         return {"error": str(e)}
 
 @app.get("/")
 def home():
-    return {"message": "AI Grievance System V3.1 (Classification + Semantic Search) is Online 🤖"}
+    return {"message": "AI Grievance System V3.2 (Context-Aware) is Online 🤖"}
