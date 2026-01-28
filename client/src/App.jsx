@@ -37,6 +37,7 @@ import AuditLogs from "./pages/superAdmin/AuditLogs";
 import UserManagement from "./pages/superAdmin/UserManagement";
 import FraudMonitor from "./pages/superAdmin/FraudMonitor";
 import HowItWorks from "./components/layout/HowItWorks";
+import Faq from "./pages/common/Faq";
 
 function App() {
   return (
@@ -53,6 +54,7 @@ function App() {
             <Route path="/unauthorized" element={<Unauthorized />} />
             <Route path="/complaint/:id" element={<ComplaintDetail />} />
             <Route path="/about" element={<HowItWorks />} />
+            <Route path="/faq" element={<Faq />} />
 
             {/* --- CITIZEN ROUTES (Fixed) --- */}
             <Route element={<ProtectedRoute allowedRoles={['citizen']} />}>
