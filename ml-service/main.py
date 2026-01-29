@@ -1,5 +1,6 @@
 import joblib
 import numpy as np
+from typing import Optional
 import pandas as pd
 import os
 from fastapi import FastAPI, BackgroundTasks
@@ -102,8 +103,8 @@ class DuplicateCheckInput(BaseModel):
 
 class FeedbackInput(BaseModel):
     text: str
-    correct_category: str = None  # Optional (Admin might only change Priority)
-    correct_priority: str = None  # Optional (Admin might only change Dept)
+    correct_category: Optional[str] = None
+    correct_priority: Optional[str] = None
 
 # --- ENDPOINTS ---
 

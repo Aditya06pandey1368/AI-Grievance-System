@@ -1,2 +1,3 @@
-text,category
-The park is full of stray dogs,Sanitation
+text,category,priority
+The central park is very dark at night because the pole is broken.,,Low
+The central park is very dark at night because the pole is broken.,,Critical
