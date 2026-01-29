@@ -5,6 +5,25 @@ import AuditLog from '../models/AuditLog.model.js';
 import Officer from '../models/Officer.model.js';
 import Department from '../models/Department.model.js';
 
+// --- HELPER: Map Database Dept Names to AI Categories ---
+const mapToAICategory = (dbDeptName) => {
+    // These are the EXACT 10 labels your Python AI knows
+    const validLabels = [
+        "Road", "Electricity", "Water", "Sanitation", "Police", "Fire", 
+        "URBAN PLANNING & REGULATION", "Environmental Protection", 
+        "Animal Control & Veterinary", "Disaster Management"
+    ];
+
+    // Try to find a match (Case insensitive)
+    // Example: "Public Sanitation Dept" -> matches "Sanitation"
+    const match = validLabels.find(label => 
+        dbDeptName.toLowerCase().includes(label.toLowerCase()) || 
+        label.toLowerCase().includes(dbDeptName.toLowerCase())
+    );
+
+    return match || null; // Returns specific label or null if no match
+};
+
 // Helper to check same day
 const isToday = (date) => {
     const today = new Date();
