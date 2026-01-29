@@ -1,10 +1,11 @@
 import { useEffect, useState, useRef } from "react";
-import { Link } from "react-router-dom"; // Added Link import
+import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   CheckCircle, Clock, AlertCircle, RefreshCcw, 
   Filter, AlertTriangle, ShieldAlert, ChevronDown, 
-  Check, Flame, ArrowUpCircle, MinusCircle, ArrowDownCircle
+  Check, Flame, ArrowUpCircle, MinusCircle, ArrowDownCircle,
+  Brain, Lock // <--- Added Brain and Lock icons
 } from "lucide-react";
 import Navbar from "../../components/layout/Navbar";
 import api from "../../services/api";
@@ -18,6 +19,10 @@ const AdminDashboard = () => {
   const [filter, setFilter] = useState("all");
 
   const [pendingAction, setPendingAction] = useState(null); 
+
+  // --- AI RETRAINING STATES ---
+  const [isRetraining, setIsRetraining] = useState(false);
+  const [retrainCooldown, setRetrainCooldown] = useState(0); // Hours remaining
 
   const fetchDashboardData = async () => {
     setIsSyncing(true);
@@ -43,7 +48,45 @@ const AdminDashboard = () => {
     }
   };
 
-  useEffect(() => { fetchDashboardData(); }, []);
+  // --- CHECK COOLDOWN ON LOAD ---
+  useEffect(() => { 
+    fetchDashboardData(); 
+    checkRetrainCooldown();
+  }, []);
+
+  const checkRetrainCooldown = () => {
+    const lastRun = localStorage.getItem('last_ai_retrain');
+    if (lastRun) {
+        const diff = Date.now() - parseInt(lastRun);
+        const hoursPassed = diff / (1000 * 60 * 60);
+        if (hoursPassed < 72) {
+            setRetrainCooldown(72 - hoursPassed);
+        } else {
+            setRetrainCooldown(0);
+        }
+    }
+  };
+
+  // --- HANDLE MANUAL RETRAINING ---
+  const handleRetrainAI = async () => {
+    if (retrainCooldown > 0) return;
+
+    setIsRetraining(true);
+    try {
+        const res = await api.post('/complaints/retrain-ai');
+        toast.success(res.data.message || "AI Retraining Started!");
+        
+        // Set Timer
+        localStorage.setItem('last_ai_retrain', Date.now());
+        setRetrainCooldown(72);
+        
+    } catch (error) {
+        console.error("Retrain Error:", error);
+        toast.error("Failed to trigger AI training. Is Python running?");
+    } finally {
+        setIsRetraining(false);
+    }
+  };
 
   const initiateChange = (id, type, value, currentLabel) => {
     let newValueLabel = value;
@@ -77,9 +120,10 @@ const AdminDashboard = () => {
         await api.patch(`/complaints/${id}/status`, { status: value });
         toast.success(`Status updated`);
       } else {
+        // --- THIS CONNECTS TO BACKEND RECLASSIFY (TEACHES AI) ---
         const payload = type === 'priority' ? { priority: value } : { departmentId: value };
         await api.put(`/complaints/${id}/reclassify`, payload);
-        toast.success(`Updated successfully`);
+        toast.success(`Updated & AI Feedback Sent`);
       }
     } catch (error) {
       toast.error(`Update failed`);
@@ -151,15 +195,42 @@ const AdminDashboard = () => {
             </p>
           </div>
           
-          <motion.button 
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={fetchDashboardData} 
-            className="flex items-center gap-3 px-6 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-md hover:shadow-xl transition-all text-slate-700 dark:text-slate-200 font-bold group"
-          >
-            <RefreshCcw className={`w-5 h-5 text-indigo-500 group-hover:text-indigo-600 transition-colors ${isSyncing ? 'animate-spin' : ''}`} /> 
-            <span>Sync Data</span>
-          </motion.button>
+          <div className="flex gap-3">
+              {/* --- NEW: RETRAIN AI BUTTON --- */}
+              <motion.button 
+                whileHover={retrainCooldown <= 0 ? { scale: 1.05 } : {}}
+                whileTap={retrainCooldown <= 0 ? { scale: 0.95 } : {}}
+                onClick={handleRetrainAI}
+                disabled={retrainCooldown > 0 || isRetraining}
+                className={`flex items-center gap-3 px-6 py-3 border rounded-2xl shadow-md transition-all font-bold group
+                  ${retrainCooldown > 0 
+                    ? 'bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-400 cursor-not-allowed' 
+                    : 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white border-transparent hover:shadow-lg hover:shadow-indigo-500/30'
+                  }`}
+              >
+                {retrainCooldown > 0 ? (
+                    <>
+                        <Lock className="w-5 h-5" />
+                        <span>Wait {Math.ceil(retrainCooldown)}h</span>
+                    </>
+                ) : (
+                    <>
+                        <Brain className={`w-5 h-5 ${isRetraining ? 'animate-pulse' : ''}`} /> 
+                        <span>{isRetraining ? 'Training...' : 'Retrain AI'}</span>
+                    </>
+                )}
+              </motion.button>
+
+              <motion.button 
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={fetchDashboardData} 
+                className="flex items-center gap-3 px-6 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-md hover:shadow-xl transition-all text-slate-700 dark:text-slate-200 font-bold group"
+              >
+                <RefreshCcw className={`w-5 h-5 text-indigo-500 group-hover:text-indigo-600 transition-colors ${isSyncing ? 'animate-spin' : ''}`} /> 
+                <span>Sync Data</span>
+              </motion.button>
+          </div>
         </div>
 
         {/* 3D STATS CARDS */}
@@ -216,7 +287,6 @@ const AdminDashboard = () => {
                                 {c.citizen?.name?.charAt(0) || "U"}
                             </div>
                             <div>
-                                {/* ADDED LINK HERE */}
                                 <Link to={`/complaint/${c._id}`}>
                                     <div className="font-bold text-slate-900 dark:text-white line-clamp-1 text-base mb-1 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors cursor-pointer hover:underline">
                                         {c.title}
@@ -281,6 +351,7 @@ const AdminDashboard = () => {
   );
 };
 
+// ... (Keep your CustomDropdown and StatCard components exactly as they were) ...
 const CustomDropdown = ({ value, options, onChange, type }) => {
     const [isOpen, setIsOpen] = useState(false);
     const containerRef = useRef(null);
