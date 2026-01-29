@@ -1,0 +1,5 @@
+# Ignore AI Models and Data
+complaint_model.pkl
+priority_model.pkl
+feedback.csv
+__pycache__/

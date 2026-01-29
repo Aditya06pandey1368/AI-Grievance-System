@@ -298,82 +298,63 @@ export const updateComplaintStatus = async (req, res) => {
 };
 
 // @desc    Reclassify (Human in the Loop) - With Names & IDs
+// @desc    Reclassify (Human in the Loop) & Teach AI
+// @route   PUT /api/complaints/:id/reclassify
 export const reclassifyComplaint = async (req, res) => {
   try {
     const { id } = req.params;
     const { departmentId, priority, reason } = req.body;
 
+    // 1. Fetch Complaint with Dept data
     const complaint = await Complaint.findById(id).populate('department');
     if (!complaint) return res.status(404).json({ success: false, message: "Complaint not found" });
 
-    // Capture Old Values
+    // 2. Determine "Before" State
     const oldDeptObj = complaint.department;
-    const oldDeptName = oldDeptObj ? oldDeptObj.name : 'Unassigned';
     const oldPriority = complaint.priorityLevel;
 
     let isChanged = false;
     let changesLog = [];
     
-    // Prepare Feedback Payload for AI
-    let feedbackPayload = {
-        text: complaint.description,
-        correct_category: null,  // Will fill if Dept changes
-        correct_priority: null   // Will fill if Priority changes
-    };
+    // Variables to hold the "Final Truth" for the AI
+    let finalDeptName = oldDeptObj ? oldDeptObj.name : "";
+    let finalPriority = oldPriority;
 
-    // --- 1. HANDLE DEPARTMENT CHANGE ---
+    // --- HANDLE DEPARTMENT CHANGE ---
     if (departmentId && (!oldDeptObj || oldDeptObj._id.toString() !== departmentId)) {
         const newDeptObj = await Department.findById(departmentId);
         
         if (newDeptObj) {
-            // A. Update DB
             complaint.department = departmentId;
+            finalDeptName = newDeptObj.name; // Update Final Truth
+            
             isChanged = true;
-            changesLog.push(`Department: ${oldDeptName} -> ${newDeptObj.name}`);
+            changesLog.push(`Department: ${oldDeptObj ? oldDeptObj.name : 'None'} -> ${newDeptObj.name}`);
 
-            // B. Map to AI Category
-            const mappedCategory = mapToAICategory(newDeptObj.name);
-            if (mappedCategory) {
-                feedbackPayload.correct_category = mappedCategory;
-            }
-
-            // C. Officer Re-assignment (PRESERVED LOGIC)
+            // Reset Officer Logic
             const newOfficer = await Officer.findOne({ 
                 department: departmentId, 
                 jurisdictionZones: { $in: [complaint.zone] } 
             });
-
-            if (newOfficer) {
-                complaint.assignedOfficer = newOfficer.user;
-                complaint.status = 'assigned';
-                changesLog.push(`Auto-assigned to new officer`);
-            } else {
-                complaint.assignedOfficer = null;
-                complaint.status = 'submitted';
-                changesLog.push(`No officer found in new dept`);
-            }
+            complaint.assignedOfficer = newOfficer ? newOfficer.user : null;
+            complaint.status = newOfficer ? 'assigned' : 'submitted';
         }
     }
 
-    // --- 2. HANDLE PRIORITY CHANGE ---
+    // --- HANDLE PRIORITY CHANGE ---
     if (priority && priority !== oldPriority) {
-        // A. Update DB
         complaint.priorityLevel = priority;
+        finalPriority = priority; // Update Final Truth
         
-        // Map Priority to Score (Critical=95, High=75, Medium=50, Low=25)
         const scoreMap = { 'Critical': 95, 'High': 75, 'Medium': 50, 'Low': 25 };
         complaint.priorityScore = scoreMap[priority] || 50;
 
         isChanged = true;
         changesLog.push(`Priority: ${oldPriority} -> ${priority}`);
-        
-        // B. Prepare AI Feedback
-        feedbackPayload.correct_priority = priority;
     }
 
-    // --- 3. SAVE & SEND FEEDBACK ---
+    // --- SAVE & SEND FULL FEEDBACK ---
     if (isChanged) {
-        // Update History
         complaint.history.push({
             action: 'RECLASSIFIED',
             performedBy: req.user._id,
@@ -381,8 +362,6 @@ export const reclassifyComplaint = async (req, res) => {
         });
 
         await complaint.save();
-
-        // Audit Log
         await AuditLog.create({
             action: 'ADMIN_OVERRIDE',
             actor: req.user._id,
@@ -390,21 +369,31 @@ export const reclassifyComplaint = async (req, res) => {
             details: `Correction: ${changesLog.join(' | ')}`
         });
 
-        // ** TRIGGER AI LEARNING (The Magic Part) **
-        // Only send if we actually corrected something relevant to AI
-        if (feedbackPayload.correct_category || feedbackPayload.correct_priority) {
-            console.log("🧠 Sending Correction to AI:", feedbackPayload);
+        // ** CRITICAL FIX: ALWAYS SEND FULL CONTEXT **
+        // Even if we only changed Priority, we remind AI of the Dept.
+        // Even if we only changed Dept, we remind AI of the Priority.
+        
+        const aiCategory = mapToAICategory(finalDeptName);
+        
+        if (aiCategory) {
+            const feedbackPayload = {
+                text: complaint.description,
+                correct_category: aiCategory,   // e.g. "Electricity"
+                correct_priority: finalPriority // e.g. "Critical"
+            };
+
+            console.log("🧠 Sending Full Context to AI:", feedbackPayload);
             
-            // Fire and Forget (Don't wait for response, just send)
             axios.post('http://localhost:8000/feedback', feedbackPayload)
-                .then(() => console.log("✅ AI successfully received feedback."))
-                .catch(err => console.error("⚠️ AI Feedback Failed (Is Python running?):", err.message));
+                .catch(err => console.error("AI Feedback Failed:", err.message));
+        } else {
+            console.log(`⚠️ Skipping AI feedback: Department '${finalDeptName}' not recognized by AI.`);
         }
     }
 
     res.status(200).json({ 
         success: true, 
-        message: "Complaint updated successfully", 
+        message: "Complaint updated & AI trained", 
         data: complaint 
     });
 
