@@ -7,21 +7,16 @@ import Department from '../models/Department.model.js';
 
 // --- HELPER: Map Database Dept Names to AI Categories ---
 const mapToAICategory = (dbDeptName) => {
-    // These are the EXACT 10 labels your Python AI knows
     const validLabels = [
         "Road", "Electricity", "Water", "Sanitation", "Police", "Fire", 
         "URBAN PLANNING & REGULATION", "Environmental Protection", 
         "Animal Control & Veterinary", "Disaster Management"
     ];
-
-    // Try to find a match (Case insensitive)
-    // Example: "Public Sanitation Dept" -> matches "Sanitation"
-    const match = validLabels.find(label => 
+    // Find closest match (e.g., "Public Sanitation" -> "Sanitation")
+    return validLabels.find(label => 
         dbDeptName.toLowerCase().includes(label.toLowerCase()) || 
         label.toLowerCase().includes(dbDeptName.toLowerCase())
-    );
-
-    return match || null; // Returns specific label or null if no match
+    ) || null;
 };
 
 // Helper to check same day
@@ -306,73 +301,110 @@ export const updateComplaintStatus = async (req, res) => {
 export const reclassifyComplaint = async (req, res) => {
   try {
     const { id } = req.params;
-    const { departmentId, priority } = req.body;
+    const { departmentId, priority, reason } = req.body;
 
-    // 1. Find Complaint & Populate Department to get the OLD Name
     const complaint = await Complaint.findById(id).populate('department');
     if (!complaint) return res.status(404).json({ success: false, message: "Complaint not found" });
 
-    // 2. Capture Old Values
+    // Capture Old Values
     const oldDeptObj = complaint.department;
-    const oldDeptId = oldDeptObj ? oldDeptObj._id.toString() : 'N/A';
     const oldDeptName = oldDeptObj ? oldDeptObj.name : 'Unassigned';
-    
-    const oldPriority = complaint.priorityLevel || 'Low'; 
+    const oldPriority = complaint.priorityLevel;
 
     let isChanged = false;
+    let changesLog = [];
+    
+    // Prepare Feedback Payload for AI
+    let feedbackPayload = {
+        text: complaint.description,
+        correct_category: null,  // Will fill if Dept changes
+        correct_priority: null   // Will fill if Priority changes
+    };
 
-    // --- LOGIC 1: Handle Department Change ---
-    if (departmentId && departmentId !== oldDeptId) {
-        // Fetch NEW Department to get its Name
+    // --- 1. HANDLE DEPARTMENT CHANGE ---
+    if (departmentId && (!oldDeptObj || oldDeptObj._id.toString() !== departmentId)) {
         const newDeptObj = await Department.findById(departmentId);
-        const newDeptName = newDeptObj ? newDeptObj.name : 'Unknown Dept';
+        
+        if (newDeptObj) {
+            // A. Update DB
+            complaint.department = departmentId;
+            isChanged = true;
+            changesLog.push(`Department: ${oldDeptName} -> ${newDeptObj.name}`);
 
-        complaint.department = departmentId;
-        isChanged = true;
+            // B. Map to AI Category
+            const mappedCategory = mapToAICategory(newDeptObj.name);
+            if (mappedCategory) {
+                feedbackPayload.correct_category = mappedCategory;
+            }
 
-        // ** Find New Officer for the New Department in the Same Zone **
-        const newOfficer = await Officer.findOne({
-            department: departmentId,
-            jurisdictionZones: { $in: [complaint.zone] }
-        });
+            // C. Officer Re-assignment (PRESERVED LOGIC)
+            const newOfficer = await Officer.findOne({ 
+                department: departmentId, 
+                jurisdictionZones: { $in: [complaint.zone] } 
+            });
 
-        if (newOfficer) {
-            complaint.assignedOfficer = newOfficer.user;
-            complaint.status = 'assigned';
-        } else {
-            complaint.assignedOfficer = null;
-            complaint.status = 'submitted'; // Reset if no officer found
+            if (newOfficer) {
+                complaint.assignedOfficer = newOfficer.user;
+                complaint.status = 'assigned';
+                changesLog.push(`Auto-assigned to new officer`);
+            } else {
+                complaint.assignedOfficer = null;
+                complaint.status = 'submitted';
+                changesLog.push(`No officer found in new dept`);
+            }
         }
-
-        await AuditLog.create({
-            action: 'DEPT_REASSIGNMENT',
-            actor: req.user._id,
-            targetId: complaint._id,
-            details: `Reassigned Complaint :: ${complaint.title} (${complaint._id})   :  ${oldDeptName} (${oldDeptId})   ->   ${newDeptName} (${departmentId})  `
-        });
     }
 
-    // --- LOGIC 2: Handle Priority Change ---
+    // --- 2. HANDLE PRIORITY CHANGE ---
     if (priority && priority !== oldPriority) {
+        // A. Update DB
         complaint.priorityLevel = priority;
-        isChanged = true;
+        
+        // Map Priority to Score (Critical=95, High=75, Medium=50, Low=25)
+        const scoreMap = { 'Critical': 95, 'High': 75, 'Medium': 50, 'Low': 25 };
+        complaint.priorityScore = scoreMap[priority] || 50;
 
-        await AuditLog.create({
-            action: 'PRIORITY_UPDATE',
-            actor: req.user._id,
-            targetId: complaint._id,
-            details: `Priority updated for Complaint :: ${complaint.title} (${complaint._id}) :  ${oldPriority}  ->  ${priority}`
-        });
+        isChanged = true;
+        changesLog.push(`Priority: ${oldPriority} -> ${priority}`);
+        
+        // B. Prepare AI Feedback
+        feedbackPayload.correct_priority = priority;
     }
 
-    // 3. Save
+    // --- 3. SAVE & SEND FEEDBACK ---
     if (isChanged) {
+        // Update History
+        complaint.history.push({
+            action: 'RECLASSIFIED',
+            performedBy: req.user._id,
+            remarks: `Admin Update: ${changesLog.join(', ')}. Reason: ${reason || 'None'}`
+        });
+
         await complaint.save();
+
+        // Audit Log
+        await AuditLog.create({
+            action: 'ADMIN_OVERRIDE',
+            actor: req.user._id,
+            targetId: complaint._id,
+            details: `Correction: ${changesLog.join(' | ')}`
+        });
+
+        // ** TRIGGER AI LEARNING (The Magic Part) **
+        // Only send if we actually corrected something relevant to AI
+        if (feedbackPayload.correct_category || feedbackPayload.correct_priority) {
+            console.log("🧠 Sending Correction to AI:", feedbackPayload);
+            
+            // Fire and Forget (Don't wait for response, just send)
+            axios.post('http://localhost:8000/feedback', feedbackPayload)
+                .then(() => console.log("✅ AI successfully received feedback."))
+                .catch(err => console.error("⚠️ AI Feedback Failed (Is Python running?):", err.message));
+        }
     }
 
     res.status(200).json({ 
         success: true, 
-        message: "Complaint updated successfully",
+        message: "Complaint updated successfully", 
         data: complaint 
     });
 
@@ -438,4 +470,35 @@ export const getAllComplaints = async (req, res) => {
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
+};
+
+// @desc    Trigger AI Retraining Manually (For Dashboard Button)
+// @route   POST /api/complaints/retrain-ai
+export const triggerAIRetraining = async (req, res) => {
+    try {
+        console.log("🔄 Admin triggered Manual Retraining...");
+        
+        // Call Python Service
+        const aiResponse = await axios.post('http://localhost:8000/retrain', {}, { timeout: 5000 });
+
+        // Log Action
+        await AuditLog.create({
+            action: 'AI_RETRAIN_TRIGGERED',
+            actor: req.user._id,
+            details: 'Admin manually triggered AI model retraining.'
+        });
+
+        res.status(200).json({
+            success: true,
+            message: "AI Retraining Started successfully. Models will update in background.",
+            ai_response: aiResponse.data
+        });
+
+    } catch (error) {
+        console.error("Retrain Error:", error.message);
+        res.status(503).json({ 
+            success: false, 
+            message: "Failed to reach AI Service. Ensure Python backend is running." 
+        });
+    }
 };
