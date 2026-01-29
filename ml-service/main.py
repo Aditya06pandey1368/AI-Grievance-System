@@ -1,21 +1,91 @@
 import joblib
 import numpy as np
+import pandas as pd
+import os
 import re
-from fastapi import FastAPI
+from fastapi import FastAPI, BackgroundTasks
 from pydantic import BaseModel
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
+from apscheduler.schedulers.background import BackgroundScheduler
+from contextlib import asynccontextmanager
 
-# 1. Load Models
-print("Loading Classification Model...")
-model = joblib.load("complaint_model.pkl")
+# Import our custom training logic
+from train_model import train_and_save
 
-print("Loading Semantic Search Model...")
-semantic_model = SentenceTransformer('all-MiniLM-L6-v2')
-print("✅ All Models Loaded!")
+# --- CONFIGURATION ---
+MODEL_FILE = "complaint_model.pkl"
+FEEDBACK_FILE = "feedback.csv"
 
-app = FastAPI()
+# Global Variable to hold the model in memory
+classification_model = None
+semantic_model = None
 
+# --- LIFESPAN MANAGER (Startup/Shutdown Logic) ---
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # 1. LOAD MODELS ON STARTUP
+    global classification_model, semantic_model
+    print("🚀 System Startup: Loading Models...")
+    
+    # Load Semantic Model (Downloads if not present)
+    semantic_model = SentenceTransformer('all-MiniLM-L6-v2')
+    
+    # Load Classification Model
+    if os.path.exists(MODEL_FILE):
+        classification_model = joblib.load(MODEL_FILE)
+        print("✅ Classification Model Loaded from Disk.")
+    else:
+        print("⚠️ No model found. Training from scratch now...")
+        classification_model = train_and_save() # Auto-train if missing
+
+    # 2. START SCHEDULER (Weekly Retraining)
+    scheduler = BackgroundScheduler()
+    # Schedules the 'scheduled_retrain' function to run every 7 days
+    scheduler.add_job(scheduled_retrain, 'interval', days=7)
+    scheduler.start()
+    print("⏰ Weekly Retraining Scheduler Started (Every 7 Days)")
+
+    yield # App runs here
+
+    # 3. SHUTDOWN
+    scheduler.shutdown()
+    print("🛑 Scheduler Shut Down.")
+
+app = FastAPI(lifespan=lifespan)
+
+# --- SCHEDULER FUNCTION ---
+def scheduled_retrain():
+    print("⏰ AUTOMATIC TASK: Weekly Retraining Started...")
+    perform_retraining()
+
+# --- HELPER: CORE RETRAINING LOGIC ---
+def perform_retraining():
+    global classification_model
+    
+    # 1. Check if feedback exists
+    if not os.path.exists(FEEDBACK_FILE):
+        print("ℹ️ No feedback data found. Skipping retrain.")
+        return {"message": "No new data to train on."}
+    
+    try:
+        # 2. Load Feedback Data
+        df_feedback = pd.read_csv(FEEDBACK_FILE)
+        
+        # 3. Train (Base Data + Feedback)
+        # This function (from train_model.py) handles the merging and saving
+        new_model = train_and_save(df_feedback)
+        
+        # 4. Hot Swap the Model in Memory
+        classification_model = new_model
+        print("✅ HOT RELOAD: System is now using the updated brain!")
+        return {"message": "Retraining Successful & Model Reloaded"}
+        
+    except Exception as e:
+        print(f"❌ Retraining Failed: {e}")
+        return {"error": str(e)}
+
+# --- INPUT SCHEMAS ---
 class ComplaintInput(BaseModel):
     text: str
 
@@ -23,7 +93,11 @@ class DuplicateCheckInput(BaseModel):
     new_complaint: str
     existing_complaints: list[str]
 
-# --- SEVERITY LOGIC ---
+class FeedbackInput(BaseModel):
+    text: str
+    correct_category: str
+
+# --- PRIORITY LOGIC (Keep as is) ---
 def analyze_height_severity(text):
     pattern = r"(\d+)(?:st|nd|rd|th)?\s*(?:floor|storey|story|building)"
     match = re.search(pattern, text.lower())
@@ -70,12 +144,17 @@ def calculate_priority(text, category):
 
     return score, level
 
-# --- ENDPOINTS ---
+# --- API ENDPOINTS ---
+
+@app.get("/")
+def home():
+    return {"message": "AI Grievance System V4.0 (Self-Learning) is Online 🤖"}
 
 @app.post("/predict")
 def predict_complaint(data: ComplaintInput):
-    prediction = model.predict([data.text])[0]
-    probs = model.predict_proba([data.text])
+    # Use the global model loaded in memory
+    prediction = classification_model.predict([data.text])[0]
+    probs = classification_model.predict_proba([data.text])
     confidence = float(np.max(probs))
     score, level = calculate_priority(data.text, prediction)
     
@@ -88,36 +167,44 @@ def predict_complaint(data: ComplaintInput):
 
 @app.post("/check_duplicate")
 def check_duplicate(data: DuplicateCheckInput):
+    if not data.existing_complaints:
+        return {"is_duplicate": False, "score": 0.0}
+
+    new_vector = semantic_model.encode([data.new_complaint])
+    existing_vectors = semantic_model.encode(data.existing_complaints)
+
+    scores = cosine_similarity(new_vector, existing_vectors)[0]
+    max_score = float(np.max(scores))
+
+    # Debug print
+    print(f"🔍 Check: {data.new_complaint[:30]}... Score: {max_score:.3f}")
+
+    return {
+        "is_duplicate": max_score > 0.55,
+        "score": max_score
+    }
+
+# 1. FEEDBACK ENDPOINT (Collects mistakes)
+@app.post("/feedback")
+def submit_feedback(data: FeedbackInput):
     try:
-        if not data.existing_complaints:
-            return {"is_duplicate": False, "score": 0.0}
-
-        # 1. Vectorize
-        new_vector = semantic_model.encode([data.new_complaint])
-        existing_vectors = semantic_model.encode(data.existing_complaints)
-
-        # 2. Calculate Similarity
-        scores = cosine_similarity(new_vector, existing_vectors)[0]
-        max_score = float(np.max(scores))
-
-        # --- DEBUG PRINT ---
-        # Watch your Python Terminal when you click Submit!
-        print(f"\n🔍 DUPLICATE CHECK:")
-        print(f"   New Text: {data.new_complaint}")
-        print(f"   Max Similarity Score: {max_score:.4f}")
-        print(f"   Result: {'DUPLICATE' if max_score > 0.55 else 'UNIQUE'}\n")
-
-        # --- THRESHOLD SET TO 0.55 (55%) ---
-        is_dup = max_score > 0.55
-
-        return {
-            "is_duplicate": is_dup,
-            "score": max_score
-        }
+        # Create a DataFrame for the new entry
+        new_entry = pd.DataFrame([[data.text, data.correct_category]], columns=["text", "category"])
+        
+        # Append to CSV (create if doesn't exist)
+        if not os.path.exists(FEEDBACK_FILE):
+            new_entry.to_csv(FEEDBACK_FILE, index=False)
+        else:
+            new_entry.to_csv(FEEDBACK_FILE, mode='a', header=False, index=False)
+            
+        print(f"📝 Feedback Saved: '{data.text}' -> Should be '{data.correct_category}'")
+        return {"message": "Feedback saved. Will be included in next weekly training."}
     except Exception as e:
-        print(f"Error: {e}")
         return {"error": str(e)}
 
-@app.get("/")
-def home():
-    return {"message": "AI Grievance System V3.2 (Context-Aware) is Online 🤖"}
+# 2. MANUAL RETRAIN ENDPOINT (The Button)
+@app.post("/retrain")
+def manual_retrain(background_tasks: BackgroundTasks):
+    # Runs in background so the UI doesn't freeze
+    background_tasks.add_task(perform_retraining)
+    return {"message": "Retraining process started in background."}
