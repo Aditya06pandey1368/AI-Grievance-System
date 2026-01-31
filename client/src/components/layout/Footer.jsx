@@ -7,20 +7,20 @@ const Footer = () => {
 
   return (
     <footer className="relative bg-slate-50 dark:bg-[#0B1120] border-t border-slate-200 dark:border-slate-800 overflow-hidden pt-16 pb-8">
-      
+
       {/* --- 3D Background Elements --- */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
         <div className="absolute -top-[200px] -right-[200px] w-[600px] h-[600px] bg-primary-500/10 rounded-full blur-[120px]" />
         <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-purple-500/10 rounded-full blur-[100px]" />
         {/* Grid Pattern */}
-        <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05]" 
-             style={{ backgroundImage: "radial-gradient(#6366f1 1px, transparent 1px)", backgroundSize: "24px 24px" }} 
+        <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05]"
+          style={{ backgroundImage: "radial-gradient(#6366f1 1px, transparent 1px)", backgroundSize: "24px 24px" }}
         />
       </div>
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-12 mb-16">
-          
+
           {/* Brand Column (Span 4) */}
           <div className="md:col-span-4 space-y-6">
             <Link to="/" className="flex items-center gap-2 group">
@@ -37,8 +37,8 @@ const Footer = () => {
             <p className="text-slate-500 dark:text-slate-400 leading-relaxed text-sm">
               Empowering citizens with AI-driven governance. We bridge the gap between problems and resolutions using advanced routing algorithms.
             </p>
-            
-            
+
+
           </div>
 
           {/* Links Column 1 */}
@@ -64,9 +64,9 @@ const Footer = () => {
           <div className="md:col-span-3">
             <h3 className="font-bold text-slate-900 dark:text-white mb-6">Connect</h3>
             <div className="flex gap-4">
-              <SocialButton icon={<Github className="w-5 h-5" />} href="#" label="Github" />
-              <SocialButton icon={<Linkedin className="w-5 h-5" />} href="#" label="LinkedIn" />
-              <SocialButton icon={<Mail className="w-5 h-5" />} href="$aaditya06pandey@gmail.com" label="Email" />
+              <SocialButton icon={<Github className="w-5 h-5" />} href="https://github.com/Aditya06pandey1368" label="Github" />
+              <SocialButton icon={<Linkedin className="w-5 h-5" />} href="https://www.linkedin.com/in/adityapandey06" label="LinkedIn" />
+              <SocialButton icon={<Mail className="w-5 h-5" />} href="mailto:aaditya06pandey@gmail.com" label="Email" />
             </div>
           </div>
         </div>
@@ -89,7 +89,7 @@ const Footer = () => {
 
 // 3D Hover Button Component
 const SocialButton = ({ icon, href, label }) => (
-  <motion.a 
+  <motion.a
     href={href}
     aria-label={label}
     whileHover={{ y: -5 }}
