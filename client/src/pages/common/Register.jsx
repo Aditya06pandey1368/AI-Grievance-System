@@ -27,19 +27,21 @@ const Register = () => {
   };
 
   return (
-    <div className="min-h-screen pt-20 bg-slate-50 dark:bg-[#0B1120] font-sans text-slate-900 dark:text-white transition-colors duration-300">
+    // Added overflow-hidden to prevent horizontal scroll from the glow effect
+    <div className="min-h-screen pt-20 bg-slate-50 dark:bg-[#0B1120] font-sans text-slate-900 dark:text-white transition-colors duration-300 overflow-hidden">
       <Navbar />
 
-      <div className="flex  items-center justify-center min-h-[calc(100vh-80px)] px-4 sm:px-6 relative">
+      {/* Added py-12 to ensure vertical spacing on short screens (landscape mobile) */}
+      <div className="flex items-center justify-center min-h-[calc(100vh-80px)] px-4 sm:px-6 py-12 relative">
         
-        {/* Subtle Background Glow */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-indigo-500/10 dark:bg-indigo-500/5 rounded-full blur-[100px] pointer-events-none" />
+        {/* Responsive Background Glow: Smaller on mobile, larger on tablet+ */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] sm:w-[600px] sm:h-[600px] bg-indigo-500/10 dark:bg-indigo-500/5 rounded-full blur-[60px] sm:blur-[100px] pointer-events-none" />
 
         <motion.div 
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-8 relative z-10"
+          className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 relative z-10"
         >
           <div className="text-center mb-8">
             <h1 className="text-2xl font-bold tracking-tight mb-2">Create an account</h1>

@@ -10,7 +10,25 @@ import Button from "../../components/ui/Button";
 import Footer from "../../components/layout/Footer";
 
 const Home = () => {
-  const isAuthenticated = !!localStorage.getItem("token"); 
+  // Securely check auth
+  const token = localStorage.getItem("token");
+  const isAuthenticated = !!token;
+  const user = isAuthenticated ? JSON.parse(localStorage.getItem("user")) : null;
+
+  // --- FIX: DYNAMIC ROUTING ---
+  // Determine where to send the user based on their role
+  const getDashboardPath = () => {
+    if (!user) return "/register";
+    switch(user.role) {
+        case 'super_admin': return '/super-admin/dashboard';
+        case 'dept_admin': return '/admin/dashboard';
+        case 'officer': return '/officer-dashboard';
+        default: return '/dashboard'; // default for citizen
+    }
+  };
+  
+  const dashboardPath = getDashboardPath();
+
   const { scrollY } = useScroll();
   const y1 = useTransform(scrollY, [0, 500], [0, 200]);
   const y2 = useTransform(scrollY, [0, 500], [0, -150]);
@@ -57,7 +75,8 @@ const Home = () => {
                 </p>
 
                 <div className="flex flex-wrap gap-4">
-                    <Link to={isAuthenticated ? "/dashboard" : "/register"}>
+                    {/* --- DYNAMIC LINK BUTTON --- */}
+                    <Link to={dashboardPath}>
                         <Button className="h-16 px-10 text-xl font-bold rounded-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-[0_10px_40px_-10px_rgba(79,70,229,0.4)] transition-all transform hover:scale-105">
                             {isAuthenticated ? "Go to Dashboard" : "Get Started"}
                         </Button>
@@ -275,7 +294,8 @@ const Home = () => {
                   </p>
                   
                   <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
-                      <Link to={isAuthenticated ? "/dashboard" : "/register"}>
+                      {/* --- DYNAMIC LINK BUTTON AGAIN --- */}
+                      <Link to={dashboardPath}>
                           <Button className="h-20 px-12 text-2xl font-bold rounded-full bg-white text-indigo-950 hover:bg-indigo-50 hover:scale-105 shadow-2xl transition-all">
                               {isAuthenticated ? "Go to Dashboard" : "Join Now"}
                           </Button>
