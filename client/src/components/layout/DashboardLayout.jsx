@@ -1,37 +1,40 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Outlet } from "react-router-dom";
 import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
-import useTheme from "../../hooks/useTheme";
 
 const DashboardLayout = ({ role }) => {
+  // Initialize: Open on Desktop, Closed on Mobile
   const [isSidebarOpen, setSidebarOpen] = useState(window.innerWidth > 768);
   
-  // Auto-close sidebar on mobile, open on desktop
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth > 768) setSidebarOpen(true);
-      else setSidebarOpen(false);
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  // Handler to toggle specifically
+  const toggleSidebar = () => setSidebarOpen(prev => !prev);
+
+  // Handler to close sidebar (passed to Sidebar for mobile link clicks)
+  const closeSidebar = () => {
+    if (window.innerWidth < 768) {
+      setSidebarOpen(false);
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-dark-bg transition-colors">
-      <Navbar toggleSidebar={() => setSidebarOpen(!isSidebarOpen)} />
+    <div className="min-h-screen bg-slate-50 dark:bg-[#0f172a] transition-colors">
+      {/* Pass toggleSidebar function specifically */}
+      <Navbar toggleSidebar={toggleSidebar} />
       
       <Sidebar 
         isOpen={isSidebarOpen} 
         role={role} 
-        onClose={() => window.innerWidth < 768 && setSidebarOpen(false)} 
+        onClose={closeSidebar} 
       />
 
       <main 
-        className={`pt-20 px-4 pb-8 transition-all duration-300 ${isSidebarOpen ? 'md:ml-64' : ''}`}
+        className={`pt-20 px-4 pb-8 transition-all duration-300 ease-in-out ${
+          isSidebarOpen ? 'md:ml-64' : 'ml-0'
+        }`}
       >
         <div className="max-w-7xl mx-auto">
-          <Outlet /> {/* This renders the child page (Dashboard, etc.) */}
+          <Outlet /> 
         </div>
       </main>
     </div>
