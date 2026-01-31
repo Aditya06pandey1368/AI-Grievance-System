@@ -4,3 +4,5 @@ scikit-learn
 pandas
 numpy
 joblib
+sentence-transformers
+apscheduler

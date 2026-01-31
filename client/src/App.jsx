@@ -38,6 +38,7 @@ import UserManagement from "./pages/superAdmin/UserManagement";
 import FraudMonitor from "./pages/superAdmin/FraudMonitor";
 import HowItWorks from "./components/layout/HowItWorks";
 import Faq from "./pages/common/Faq";
+import Terms from "./pages/common/Terms";
 
 function App() {
   return (
@@ -55,6 +56,7 @@ function App() {
             <Route path="/complaint/:id" element={<ComplaintDetail />} />
             <Route path="/about" element={<HowItWorks />} />
             <Route path="/faq" element={<Faq />} />
+            <Route path="/terms" element={<Terms />} />
 
             {/* --- CITIZEN ROUTES (Fixed) --- */}
             <Route element={<ProtectedRoute allowedRoles={['citizen']} />}>

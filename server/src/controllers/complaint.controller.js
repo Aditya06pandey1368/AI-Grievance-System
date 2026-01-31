@@ -47,7 +47,7 @@ export const createComplaint = async (req, res) => {
         createdAt: { $gte: todayStart }
     });
 
-    if (dailyCount >= 19) {
+    if (dailyCount >= 3) {
         return res.status(429).json({
             success: false,
             message: "Daily limit reached. You can only submit 3 complaints per day."
