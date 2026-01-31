@@ -183,3 +183,14 @@ def manual_retrain(background_tasks: BackgroundTasks):
     # Triggers retraining in the background so API doesn't freeze
     background_tasks.add_task(perform_retraining)
     return {"message": "Retraining process started in background."}
+
+# --- SERVER STARTUP ---
+if __name__ == "__main__":
+    import uvicorn
+    import os
+    
+    # Get Port from Environment (Render uses this) or default to 8000 (Local)
+    port = int(os.environ.get("PORT", 8000))
+    
+    print(f"🚀 Starting ML Service on Port {port}...")
+    uvicorn.run(app, host="0.0.0.0", port=port)
