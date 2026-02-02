@@ -22,7 +22,7 @@ const Home = () => {
     switch(user.role) {
         case 'super_admin': return '/super-admin/dashboard';
         case 'dept_admin': return '/admin/dashboard';
-        case 'officer': return '/officer-dashboard';
+        case 'officer': return '/officer/dashboard';
         default: return '/dashboard'; // default for citizen
     }
   };
