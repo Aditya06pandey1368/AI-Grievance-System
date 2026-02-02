@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { Link } from "react-router-dom"; // Added Link import
+import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend
@@ -99,6 +99,8 @@ const DeptDashboard = () => {
     setPendingAction(null);
 
     const originalComplaints = [...complaints];
+    
+    // Optimistic Update
     setComplaints(prev => prev.map(c => {
       if (c._id === id) {
         if (type === 'status') return { ...c, status: value };
@@ -116,10 +118,14 @@ const DeptDashboard = () => {
         await api.patch(`/complaints/${id}/status`, { status: value });
         toast.success(`Status updated`);
       } else {
+        // --- AI LOGIC: THIS CONNECTS TO BACKEND RECLASSIFY (TEACHES AI) ---
         const payload = type === 'priority' ? { priority: value } : { departmentId: value };
         await api.put(`/complaints/${id}/reclassify`, payload);
-        toast.success(`Updated successfully`);
         
+        // Updated Toast to confirm AI Feedback (Matches AdminDashboard)
+        toast.success(`Updated & AI Feedback Sent`);
+        
+        // For DeptDashboard specific: If ticket moved to another dept, remove from this view
         if (type === 'department') {
             setComplaints(prev => prev.filter(c => c._id !== id));
         }
@@ -195,7 +201,7 @@ const DeptDashboard = () => {
           </motion.button>
         </div>
 
-        {/* 3D STATS CARDS (Matching AdminDashboard) */}
+        {/* 3D STATS CARDS */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
             <StatCard label="Total Complaints" count={stats.totalComplaints} icon={<BarChart2 className="w-6 h-6 text-blue-600 dark:text-blue-400"/>} gradient="from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20" borderColor="border-blue-200 dark:border-blue-800" />
             <StatCard label="Pending Actions" count={stats.pending} icon={<AlertTriangle className="w-6 h-6 text-orange-600 dark:text-orange-400"/>} gradient="from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20" borderColor="border-orange-200 dark:border-orange-800" />
@@ -203,7 +209,7 @@ const DeptDashboard = () => {
             <StatCard label="Active Officers" count={stats.activeOfficers} icon={<Users className="w-6 h-6 text-purple-600 dark:text-purple-400"/>} gradient="from-purple-50 to-fuchsia-50 dark:from-purple-900/20 dark:to-fuchsia-900/20" borderColor="border-purple-200 dark:border-purple-800" />
         </div>
 
-        {/* CHARTS SECTION (Preserved) */}
+        {/* CHARTS SECTION */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="lg:col-span-2 bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-xl border border-slate-200 dark:border-slate-700">
                 <div className="flex items-center justify-between mb-6">
@@ -242,7 +248,7 @@ const DeptDashboard = () => {
             </motion.div>
         </div>
 
-        {/* MAIN TABLE SECTION (Matching AdminDashboard) */}
+        {/* MAIN TABLE SECTION */}
         <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-xl border border-slate-200 dark:border-slate-700">
           
           <div className="p-6 border-b border-slate-200 dark:border-slate-700 flex flex-wrap gap-4 bg-white dark:bg-slate-900 rounded-t-3xl items-center">
@@ -289,7 +295,6 @@ const DeptDashboard = () => {
                                 {c.citizen?.name?.charAt(0) || "U"}
                             </div>
                             <div>
-                                {/* ADDED LINK HERE */}
                                 <Link to={`/complaint/${c._id}`}>
                                     <div className="font-bold text-slate-900 dark:text-white line-clamp-1 text-base mb-1 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors cursor-pointer hover:underline">
                                         {c.title}
@@ -354,7 +359,7 @@ const DeptDashboard = () => {
   );
 };
 
-// --- SOLID OPAQUE DROPDOWN COMPONENT (Fixes visibility) ---
+// --- SOLID OPAQUE DROPDOWN COMPONENT ---
 const CustomDropdown = ({ value, options, onChange, type }) => {
     const [isOpen, setIsOpen] = useState(false);
     const containerRef = useRef(null);
