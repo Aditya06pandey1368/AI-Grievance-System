@@ -14,6 +14,9 @@ The AI Grievance Redressal System is an intelligent web platform designed to str
 
 + This ensures faster resolution, transparency, and accountability in public administration.
 
+  <img width="2816" height="1536" alt="Gemini_Generated_Image_va5ka7va5ka7va5k" src="https://github.com/user-attachments/assets/d1aaff18-b245-4699-a1ed-2882137c548e" />
+
+
 ## ✨ Key Features    
 AI & Smart Automation Auto-Classification:   
 + Uses a trained ML model (Random Forest/SVM) to read the complaint description and tag it with the correct department.
@@ -149,3 +152,4 @@ The system has 4 distinct user levels, each with specific permissions:
 + cd client   
 + npm install    
 + npm run dev   
+
