@@ -1,6 +1,11 @@
 # 🏛️ AI Grievance Redressal System   
 A Next-Gen Smart Governance Platform powered by AI & Machine Learning
 
+## Demo
+ 
+  https://github.com/user-attachments/assets/d8c82c1e-b7e3-47c3-aa91-5be99c16be5d
+
+
 ## 📖 Overview     
 The AI Grievance Redressal System is an intelligent web platform designed to streamline the process of filing, tracking, and resolving civic complaints. Unlike traditional systems that rely on manual sorting, this platform uses Artificial Intelligence (NLP & Machine Learning) to:
 
@@ -152,4 +157,5 @@ The system has 4 distinct user levels, each with specific permissions:
 + cd client   
 + npm install    
 + npm run dev   
+
 
