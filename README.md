@@ -48,6 +48,9 @@ A robust security feature accessible only to the Super Admin. The system maintai
 ## 🔐 Role-Based Access Control (RBAC)    
 The system has 4 distinct user levels, each with specific permissions:
 
+  <img width="1080" height="589" alt="Gemini_Generated_Image_7yq73r7yq73r7yq7 (1)" src="https://github.com/user-attachments/assets/9d5f8598-9ecb-43fc-a3b3-dd3ccf4b511b" />
+
+
 ### 1. 👤 Citizen (Client)   
 + Sign Up/Login: Secure authentication.
 
@@ -157,5 +160,6 @@ The system has 4 distinct user levels, each with specific permissions:
 + cd client   
 + npm install    
 + npm run dev   
+
 
 
